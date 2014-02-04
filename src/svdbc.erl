@@ -20,6 +20,7 @@
 %%
 %%======================================================================
 -module(svdbc).
+-author('Yosuke Hara').
 
 -export([new/3, new/4, new/5, new/6, new/7,
          create_from_shcema/1,
