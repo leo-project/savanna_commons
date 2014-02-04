@@ -24,7 +24,7 @@
 
 -behaviour(gen_server).
 
--include("svdbc.hrl").
+-include("savannadb_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 

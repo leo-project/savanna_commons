@@ -19,10 +19,10 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_test).
+-module(savannadb_commons_test).
 -author('Yosuke Hara').
 
--include("svdbc.hrl").
+-include("savannadb_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 
@@ -50,17 +50,17 @@ counter_metrics() ->
                        ?debugVal(_Value),
                        ok
                end,
-    svdbc:new(?METRIC_COUNTER, Schema, Key, Window, Callback),
-    svdbc:notify(Schema, {Key, 128}),
-    svdbc:notify(Schema, {Key, 256}),
-    svdbc:notify(Schema, {Key, 384}),
-    svdbc:notify(Schema, {Key, 512}),
-    {ok, Ret_1} = svdbc:get_metric_value(Schema, Key),
+    savannadb_commons:new(?METRIC_COUNTER, Schema, Key, Window, Callback),
+    savannadb_commons:notify(Schema, {Key, 128}),
+    savannadb_commons:notify(Schema, {Key, 256}),
+    savannadb_commons:notify(Schema, {Key, 384}),
+    savannadb_commons:notify(Schema, {Key, 512}),
+    {ok, Ret_1} = savannadb_commons:get_metric_value(Schema, Key),
     ?assertEqual([{count,1280},{one,1280}], Ret_1),
 
     %% @TODO - check sent value into the db
     timer:sleep(Window * 2000 + 100),
-    {ok, Ret_2} = svdbc:get_metric_value(Schema, Key),
+    {ok, Ret_2} = savannadb_commons:get_metric_value(Schema, Key),
     ?assertEqual([{count,1280},{one,0}], Ret_2),
     ok.
 
@@ -72,19 +72,19 @@ histogram() ->
                        ?debugVal(_Value),
                        ok
                end,
-    svdbc:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
-    svdbc:notify(Schema, {Key,  16}),
-    svdbc:notify(Schema, {Key,  32}),
-    svdbc:notify(Schema, {Key,  64}),
-    svdbc:notify(Schema, {Key, 128}),
-    svdbc:notify(Schema, {Key, 128}),
-    svdbc:notify(Schema, {Key, 256}),
-    svdbc:notify(Schema, {Key, 512}),
+    savannadb_commons:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
+    savannadb_commons:notify(Schema, {Key,  16}),
+    savannadb_commons:notify(Schema, {Key,  32}),
+    savannadb_commons:notify(Schema, {Key,  64}),
+    savannadb_commons:notify(Schema, {Key, 128}),
+    savannadb_commons:notify(Schema, {Key, 128}),
+    savannadb_commons:notify(Schema, {Key, 256}),
+    savannadb_commons:notify(Schema, {Key, 512}),
 
-    {ok, Ret} = svdbc:get_metric_value(Schema, Key),
+    {ok, Ret} = savannadb_commons:get_metric_value(Schema, Key),
     ?assertEqual([16,32,64,128,128,256,512], Ret),
 
-    {ok, Ret_1} = svdbc:get_histogram_statistics(Schema, Key),
+    {ok, Ret_1} = savannadb_commons:get_histogram_statistics(Schema, Key),
     ?assertEqual(16,  leo_misc:get_value('min',    Ret_1)),
     ?assertEqual(512, leo_misc:get_value('max',    Ret_1)),
     ?assertEqual(128, leo_misc:get_value('median', Ret_1)),
@@ -92,7 +92,7 @@ histogram() ->
 
     %% @TODO - check sent value into the db
     timer:sleep(Window * 2000 + 100),
-    {ok, Ret_2} = svdbc:get_histogram_statistics(Schema, Key),
+    {ok, Ret_2} = savannadb_commons:get_histogram_statistics(Schema, Key),
     ?assertEqual(0.0, leo_misc:get_value('min',    Ret_2)),
     ?assertEqual(0.0, leo_misc:get_value('max',    Ret_2)),
     ?assertEqual(0.0, leo_misc:get_value('median', Ret_2)),

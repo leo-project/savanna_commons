@@ -20,12 +20,12 @@
 %% under the License.
 %%
 %%======================================================================
-{application, svdbc,
+{application, savannadb_commons,
  [
   {description, "An Erlang svdbc library"},
   {vsn, "0.2.0"},
   {modules, [
-             svdbc
+             savannadb_commons
             ]},
   {registered, []},
   {applications, [

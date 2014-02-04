@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB Commons
+%% LeoProject - SavannaDB
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc).
+-module(savannadb_commons).
 -author('Yosuke Hara').
 
 -export([new/4, new/5, new/6, new/7, new/8,
@@ -27,7 +27,7 @@
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
--include("svdbc.hrl").
+-include("savannadb_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
