@@ -29,9 +29,9 @@
 
 %% API
 -export([create_table/2,
-         all/0,
-         get/1, update/1, delete/1,
-         checksum/1
+         all/0, get/1, find_by_schema_name/1,
+         update/1, delete/1,
+         checksum/1, size/0
         ]).
 
 -define(TBL_NAME, ?TBL_COLUMNS).
@@ -69,7 +69,7 @@ all() ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME)]),
-                        Q2 = qlc:sort(Q1, [{order, descending}]),
+                        Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
             leo_mnesia:read(F)
@@ -93,6 +93,29 @@ get(ColumnName) ->
             case leo_mnesia:read(F) of
                 {ok, [H|_]} ->
                     {ok, H};
+                Other ->
+                    Other
+            end
+    end.
+
+%% @doc Retrieve a schema by name
+%%
+-spec(find_by_schema_name(svdb_schema()) ->
+             {ok, #svdb_column{}} | not_found | {error, any()}).
+find_by_schema_name(SchemaName) ->
+    case catch mnesia:table_info(?TBL_NAME, all) of
+        {'EXIT', _Cause} ->
+            {error, ?ERROR_MNESIA_NOT_START};
+        _ ->
+            F = fun() ->
+                        Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
+                                        X#svdb_column.schema_name == SchemaName]),
+                        Q2 = qlc:sort(Q1, [{order, ascending}]),
+                        qlc:e(Q2)
+                end,
+            case leo_mnesia:read(F) of
+                {ok, Values} ->
+                    {ok, Values};
                 Other ->
                     Other
             end
@@ -150,3 +173,11 @@ checksum(SchemaName) ->
                     -1
             end
     end.
+
+
+%% @doc Retrieve the records
+%%
+-spec(size() ->
+             pos_integer()).
+size() ->
+    mnesia:table_info(?TBL_NAME, size).

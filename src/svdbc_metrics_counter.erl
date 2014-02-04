@@ -137,7 +137,8 @@ handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
     Reply = ets:update_counter(Tid, {count, Rnd}, Value),
     {reply, Reply, State};
 
-handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
+handle_call({trim, Tid, Window}, _From, #state{name = Key,
+                                               callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
                                  [{is_integer, '$1'},
@@ -148,7 +149,7 @@ handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
     Current = get_values_1(Tid, Window),
     case is_function(Callback) of
         true ->
-            catch Callback(Current);
+            catch Callback({Key, Current});
         false ->
             void
     end,

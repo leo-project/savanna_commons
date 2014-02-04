@@ -154,7 +154,8 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
     ok = svdbc_sample_slide_server:resize(Pid, NewSize),
     {reply, ok, State#state{window = NewSize}};
 
-handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
+handle_call({trim, Tid, Window}, _From, #state{name = Key,
+                                               callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
                                  [{'<', '$1', Oldest}],
@@ -166,7 +167,7 @@ handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
 
     case is_function(Callback) of
         true ->
-            catch Callback(Current);
+            catch Callback({Key, Current});
         false ->
             void
     end,

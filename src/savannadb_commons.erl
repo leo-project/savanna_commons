@@ -23,7 +23,8 @@
 -author('Yosuke Hara').
 
 -export([new/4, new/5, new/6, new/7, new/8,
-         create_from_shcema/1,
+         create_schema/2,
+         create_metrics_by_schema/3,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
@@ -59,10 +60,82 @@ new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Ca
 
 %% doc Create a new metrics or histgram from the schema
 %%
--spec(create_from_shcema(svdb_schema()) ->
+-spec(create_schema(svdb_schema(), [#svdb_column{}]) ->
              ok | {error, any()}).
-create_from_shcema(_Schema) ->
-    ok.
+create_schema(SchemaName, Columns) ->
+    CreatedAt = leo_date:now(),
+    case svdbc_tbl_schema:update(#svdb_schema{name = SchemaName,
+                                              created_at = CreatedAt}) of
+        ok ->
+            create_schema_1(SchemaName, Columns, CreatedAt);
+        Error ->
+            Error
+    end.
+
+%% @private
+create_schema_1(_,[],_) ->
+    ok;
+create_schema_1(SchemaName, [#svdb_column{} = Col|Rest], CreatedAt) ->
+    Id = svdbc_tbl_column:size() + 1,
+    case svdbc_tbl_column:update(Col#svdb_column{id = Id,
+                                                 schema_name = SchemaName,
+                                                 created_at  = CreatedAt}) of
+        ok ->
+            create_schema_1(SchemaName, Rest, CreatedAt);
+        Error ->
+            Error
+    end;
+create_schema_1(_,_,_) ->
+    {error, invalid_args}.
+
+
+%% doc Create a new metrics or histgram by the schema
+%%
+-spec(create_metrics_by_schema(svdb_schema(), pos_integer(), function()) ->
+             ok | {error, any()}).
+create_metrics_by_schema(SchemaName, Window, Callback) ->
+    case svdbc_tbl_schema:get(SchemaName) of
+        {ok,_} ->
+            case svdbc_tbl_column:find_by_schema_name(SchemaName) of
+                {ok, Columns} ->
+                    create_metrics_by_schema_1(Columns, Window, Callback);
+                Error ->
+                    Error
+            end;
+        Error ->
+            Error
+    end.
+
+%% @private
+create_metrics_by_schema_1([],_,_) ->
+    ok;
+create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_COUNTER,
+                                         schema_name = Schema,
+                                         name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_COUNTER, Schema, Key, Window, Callback),
+    create_metrics_by_schema_1(Rest, Window, Callback);
+create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_UNIFORM,
+                                         schema_name = Schema,
+                                         name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_UNIFORM, Schema, Key, Window, Callback),
+    create_metrics_by_schema_1(Rest, Window, Callback);
+create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE,
+                                         schema_name = Schema,
+                                         name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
+    create_metrics_by_schema_1(Rest, Window, Callback);
+create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE_UNIFORM,
+                                         schema_name = Schema,
+                                         name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE_UNIFORM, Schema, Key, Window, Callback),
+    create_metrics_by_schema_1(Rest, Window, Callback);
+create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_EXDEC,
+                                         schema_name = Schema,
+                                         name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_EXDEC, Schema, Key, Window, Callback),
+    create_metrics_by_schema_1(Rest, Window, Callback);
+create_metrics_by_schema_1(_,_,_) ->
+    {error, invalid_args}.
 
 
 %% @doc Notify an event with a schema and a key
@@ -126,16 +199,16 @@ check_type(Name) ->
 check_type([],_Name) ->
     not_found;
 check_type([?METRIC_COUNTER = Type|Rest], Name) ->
-   case ets:lookup(?SPIRAL_TABLE, Name) of
-       [{Name,{spiral,_,_}}|_] ->
-           Type;
-       _ ->
-           check_type(Rest, Name)
-   end;
+    case ets:lookup(?SPIRAL_TABLE, Name) of
+        [{Name,{spiral,_,_}}|_] ->
+            Type;
+        _ ->
+            check_type(Rest, Name)
+    end;
 check_type([?METRIC_HISTOGRAM = Type|Rest], Name) ->
-   case ets:lookup(?HISTOGRAM_TABLE, Name) of
-       [{Name,{histogram,_,{_,_,_,_}}}|_] ->
-           Type;
-       _ ->
-           check_type(Rest, Name)
-   end.
+    case ets:lookup(?HISTOGRAM_TABLE, Name) of
+        [{Name,{histogram,_,{_,_,_,_}}}|_] ->
+            Type;
+        _ ->
+            check_type(Rest, Name)
+    end.

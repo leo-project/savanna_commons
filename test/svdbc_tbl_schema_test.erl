@@ -53,6 +53,7 @@ suite() ->
     ok = svdbc_tbl_schema:update(Schema_1),
     ok = svdbc_tbl_schema:update(Schema_2),
     Checksum_1 = svdbc_tbl_schema:checksum(),
+    2 = svdbc_tbl_schema:size(),
 
     {ok, Schema_1} = svdbc_tbl_schema:get(SchemaName_1),
     {ok, Schema_2} = svdbc_tbl_schema:get(SchemaName_2),
@@ -61,4 +62,6 @@ suite() ->
 
     Checksum_2 = svdbc_tbl_schema:checksum(),
     ?assertEqual(true, Checksum_1 /= Checksum_2),
+
+    1 = svdbc_tbl_schema:size(),
     ok.

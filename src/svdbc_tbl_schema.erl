@@ -31,7 +31,7 @@
 -export([create_table/2,
          all/0,
          get/1, update/1, delete/1,
-         checksum/0
+         checksum/0, size/0
         ]).
 
 -define(TBL_NAME, ?TBL_SCHEMAS).
@@ -136,3 +136,11 @@ checksum() ->
         _ ->
             -1
     end.
+
+
+%% @doc Retrieve the records
+%%
+-spec(size() ->
+             pos_integer()).
+size() ->
+    mnesia:table_info(?TBL_NAME, size).
