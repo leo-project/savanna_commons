@@ -21,7 +21,7 @@
 %%======================================================================
 -module(svdbc_sample_slide).
 
--export([start_link/2, start_link/3, start_link/4, start_link/5,
+-export([start_link/3, start_link/4, start_link/5, start_link/6,
          stop/1]).
 
 -export([update/2,
@@ -42,7 +42,8 @@
                 window = 0 :: pos_integer(),
                 server     :: pid(),
                 reservoir  :: pos_integer(),
-                before = 0 :: pos_integer()
+                before = 0 :: pos_integer(),
+                callback   :: function()
                }).
 
 -include("svdbc.hrl").
@@ -58,26 +59,26 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
--spec(start_link(atom(), svdb_histogram_type()) ->
+-spec(start_link(atom(), svdb_histogram_type(), function()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType) ->
-    start_link(Name, HistogramType, ?DEF_WINDOW).
+start_link(Name, HistogramType, Callback) ->
+    start_link(Name, HistogramType, ?DEF_WINDOW, Callback()).
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer()) ->
+-spec(start_link(atom(), svdb_histogram_type(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window) ->
-    start_link(Name, HistogramType, Window, ?DEFAULT_SIZE).
+start_link(Name, HistogramType, Window, Callback) ->
+    start_link(Name, HistogramType, Window, ?DEFAULT_SIZE, Callback).
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer()) ->
+-spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window, SampleSize) ->
-    start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA).
+start_link(Name, HistogramType, Window, SampleSize, Callback) ->
+    start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), float()) ->
+-spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), float(), function()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window, SampleSize, Alpha) ->
+start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback) ->
     gen_server:start_link({local, Name}, ?MODULE,
-                          [Name, HistogramType, Window, SampleSize, Alpha], []).
+                          [Name, HistogramType, Window, SampleSize, Alpha, Callback], []).
 
 stop(Name) ->
     gen_server:call(Name, stop).
@@ -114,7 +115,7 @@ trim(Name, Tid, Window) ->
 %%                         ignore               |
 %%                         {stop, Reason}
 %% Description: Initiates the server
-init([Name, HistogramType, Window, SampleSize, Alpha]) ->
+init([Name, HistogramType, Window, SampleSize, Alpha, Callback]) ->
     Sample = #slide{window = Window},
     Reservoir = Sample#slide.reservoir,
 
@@ -124,7 +125,8 @@ init([Name, HistogramType, Window, SampleSize, Alpha]) ->
     {ok, #state{name = Name,
                 window = Window,
                 server = Pid,
-                reservoir = Reservoir
+                reservoir = Reservoir,
+                callback  = Callback
                }}.
 
 handle_call(stop, _From, State) ->
@@ -152,17 +154,22 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
     ok = svdbc_sample_slide_server:resize(Pid, NewSize),
     {reply, ok, State#state{window = NewSize}};
 
-handle_call({trim, Tid, Window}, _From, State) ->
+handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
                                  [{'<', '$1', Oldest}],
                                  ['true']}]),
 
-    %% @TODO - retrieve the current value
+    %% Retrieve the current value, then execute the callback-function
     {ok, Values} = get_values_1(Tid, Window),
     Current = bear:get_statistics(Values),
-    ?debugVal(Current),
 
+    case is_function(Callback) of
+        true ->
+            catch Callback(Current);
+        false ->
+            void
+    end,
     {reply, ok, State#state{before = Oldest}}.
 
 handle_cast(_Msg, State) ->

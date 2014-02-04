@@ -22,7 +22,7 @@
 -module(svdbc).
 -author('Yosuke Hara').
 
--export([new/3, new/4, new/5, new/6, new/7,
+-export([new/4, new/5, new/6, new/7, new/8,
          create_from_shcema/1,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
@@ -36,25 +36,25 @@
 %% ===================================================================
 %% @doc Create a new metrics or histgram
 %%
-new(?METRIC_COUNTER, Schema, Key) ->
+new(?METRIC_COUNTER, Schema, Key, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_metrics_counter:start_link(Name).
-new(?METRIC_COUNTER, Schema, Key, Window) ->
+    svdbc_metrics_counter:start_link(Name, Callback).
+new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_metrics_counter:start_link(Name, Window);
+    svdbc_metrics_counter:start_link(Name, Window, Callback);
 
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key) ->
+new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType).
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window) ->
+    svdbc_sample_slide:start_link(Name, HistogramType, Callback).
+new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window).
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize) ->
+    svdbc_sample_slide:start_link(Name, HistogramType, Window, Callback).
+new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize).
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha) ->
+    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Callback).
+new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
     Name = gen_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha).
+    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
 %% doc Create a new metrics or histgram from the schema
@@ -134,7 +134,7 @@ check_type([?METRIC_COUNTER = Type|Rest], Name) ->
    end;
 check_type([?METRIC_HISTOGRAM = Type|Rest], Name) ->
    case ets:lookup(?HISTOGRAM_TABLE, Name) of
-       [{Name,{histogram,slide,{slide,_,_,_}}}|_] ->
+       [{Name,{histogram,_,{_,_,_,_}}}|_] ->
            Type;
        _ ->
            check_type(Rest, Name)

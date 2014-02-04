@@ -46,8 +46,11 @@ counter_metrics() ->
     Schema = 'test',
     Key = 'c1',
     Window = 10,
-
-    svdbc:new(?METRIC_COUNTER, Schema, Key, Window),
+    Callback = fun(_Value) ->
+                       ?debugVal(_Value),
+                       ok
+               end,
+    svdbc:new(?METRIC_COUNTER, Schema, Key, Window, Callback),
     svdbc:notify(Schema, {Key, 128}),
     svdbc:notify(Schema, {Key, 256}),
     svdbc:notify(Schema, {Key, 384}),
@@ -65,8 +68,11 @@ histogram() ->
     Schema = 'test',
     Key = 'h1',
     Window = 10,
-
-    svdbc:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window),
+    Callback = fun(_Value) ->
+                       ?debugVal(_Value),
+                       ok
+               end,
+    svdbc:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
     svdbc:notify(Schema, {Key,  16}),
     svdbc:notify(Schema, {Key,  32}),
     svdbc:notify(Schema, {Key,  64}),

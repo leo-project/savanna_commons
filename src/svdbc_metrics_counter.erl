@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/1, start_link/2,
+-export([start_link/2, start_link/3,
          stop/1]).
 
 -export([get_values/1,
@@ -47,7 +47,8 @@
 -record(state, {name :: atom(),
                 window = 0 :: pos_integer(),
                 reservoir  :: pos_integer(),
-                before = 0 :: pos_integer()
+                before = 0 :: pos_integer(),
+                callback   :: function()
                }).
 
 -define(DEF_WINDOW, 60).
@@ -58,11 +59,11 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
-start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name, ?DEF_WINDOW], []).
+start_link(Name, Callback) ->
+    start_link(Name, ?DEF_WINDOW, Callback).
 
-start_link(Name, Window) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name, Window], []).
+start_link(Name, Window, Callback) ->
+    gen_server:start_link({local, Name}, ?MODULE, [Name, Window, Callback], []).
 
 stop(Name) ->
     gen_server:call(Name, stop).
@@ -97,7 +98,7 @@ trim(Name, Tid, Window) ->
 %%                         ignore               |
 %%                         {stop, Reason}
 %% Description: Initiates the server
-init([Name, Window]) ->
+init([Name, Window, Callback]) ->
     Spiral = #spiral{},
     Reservoir = Spiral#spiral.tid,
     Pid = svdbc_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
@@ -110,7 +111,8 @@ init([Name, Window]) ->
                 true ->
                     {ok, #state{name = Name,
                                 window = Window,
-                                reservoir = Reservoir}};
+                                reservoir = Reservoir,
+                                callback  = Callback}};
                 _ ->
                     {stop, ?ERROR_ETS_NOT_AVAILABLE}
             end;
@@ -135,17 +137,21 @@ handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
     Reply = ets:update_counter(Tid, {count, Rnd}, Value),
     {reply, Reply, State};
 
-handle_call({trim, Tid, Window}, _From, State) ->
+handle_call({trim, Tid, Window}, _From, #state{callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
                                  [{is_integer, '$1'},
                                   {'<', '$1', Oldest}],
                                  ['true']}]),
 
-    %% @TODO - retrieve the current value
+    %% Retrieve the current value, then execute the callback-function
     Current = get_values_1(Tid, Window),
-    ?debugVal(Current),
-
+    case is_function(Callback) of
+        true ->
+            catch Callback(Current);
+        false ->
+            void
+    end,
     {reply, ok, State#state{before = Oldest}}.
 
 
