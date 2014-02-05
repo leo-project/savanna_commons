@@ -52,8 +52,8 @@ counter_metrics() ->
     Schema = 'test',
     Key = 'c1',
     Window = 10,
-    Callback = fun({_Key, _Value}) ->
-                       ?debugVal(_Key),
+    Callback = fun({_Schema, _Key, _Value}) ->
+                       ?debugVal({_Schema, _Key}),
                        ?debugVal(_Value),
                        ok
                end,
@@ -75,8 +75,8 @@ histogram() ->
     Schema = 'test',
     Key = 'h1',
     Window = 10,
-    Callback = fun({_Key,_Value}) ->
-                       ?debugVal(_Key),
+    Callback = fun({_Schema, _Key,_Value}) ->
+                       ?debugVal({_Schema, _Key}),
                        ?debugVal(_Value),
                        ok
                end,
@@ -134,8 +134,8 @@ create_schema() ->
 create_metrics_by_shcema() ->
     Schema = 'test_1',
     Window = 10,
-    Callback = fun({_Key, _Value}) ->
-                       ?debugVal(_Key),
+    Callback = fun({_Schema, _Key, _Value}) ->
+                       ?debugVal({_Schema, _Key}),
                        ?debugVal(_Value),
                        ok
                end,

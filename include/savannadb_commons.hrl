@@ -58,6 +58,24 @@
                             ?COL_TYPE_H_EXDEC |
                             ?COL_TYPE_HISTORY).
 
+
+%% Macro
+%% @doc Generate a metric-name from a schema-name and a key
+-define(svdb_metric_name(_Schema, _Key),
+        list_to_atom(lists:append([atom_to_list(_Schema), ".", atom_to_list(_Key)]))).
+
+%% @doc Retrieve a schema-name and a key from a metric-name
+-define(svdb_schema_and_key(_MetricName),
+        begin
+            _MetricName_1 = atom_to_list(_MetricName),
+            _Index  = string:chr(_MetricName_1, $.),
+            _Schema = list_to_atom(string:sub_string(_MetricName_1, 1, _Index-1)),
+            _Key    = list_to_atom(string:sub_string(_MetricName_1, _Index + 1)),
+            {_Schema,_Key}
+        end).
+
+
+%% Records
 -record(svdb_schema, {
           name       :: svdb_schema(),
           created_at :: pos_integer()

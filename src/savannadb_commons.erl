@@ -38,23 +38,23 @@
 %% @doc Create a new metrics or histgram
 %%
 new(?METRIC_COUNTER, Schema, Key, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_metrics_counter:start_link(Name, Callback).
 new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_metrics_counter:start_link(Name, Window, Callback);
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Callback).
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, Callback).
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Callback).
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
@@ -143,7 +143,7 @@ create_metrics_by_schema_1(_,_,_) ->
 -spec(notify(svdb_schema(), svdb_keyval()) ->
              ok | {error, any()}).
 notify(Schema, {Key, Event}) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     notify(check_type(Name), Name, Event).
 
 %% @private
@@ -160,7 +160,7 @@ notify(_,_,_) ->
 -spec(get_metric_value(svdb_schema(), atom()) ->
              {ok, any()} | {error, any()}).
 get_metric_value(Schema, Key) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     get_metric_value_1(check_type(Name), Name).
 
 %% @private
@@ -175,7 +175,7 @@ get_metric_value_1(_,_) ->
 %% @doc Retrieve a historgram statistics
 %%
 get_histogram_statistics(Schema, Key) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     case check_type(Name) of
         ?METRIC_HISTOGRAM ->
             svdbc_sample_slide:get_histogram_statistics(Name);
@@ -187,10 +187,6 @@ get_histogram_statistics(Schema, Key) ->
 %% ===================================================================
 %% Inner Functions
 %% ===================================================================
-%% @private
-gen_name(Schema, Key) ->
-    list_to_atom(lists:append([atom_to_list(Schema), "/", atom_to_list(Key)])).
-
 %% @private
 check_type(Name) ->
     check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name).
