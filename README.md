@@ -27,18 +27,15 @@ sample() ->
     ok = savannadb_commons:create_schema(
             SchemaName, [#svdb_column{name = 'col_1',
                                       type = ?COL_TYPE_COUNTER,
-                                      constraint = [{min, 0}, {max, 16384}]},
-                         #svdb_column{name = 'col_2',
-                                      type = ?COL_TYPE_H_SLIDE,
                                       constraint = []},
-                         #svdb_column{name = 'col_3',
-                                      type = ?COL_TYPE_H_SLIDE,
-                                      constraint = []}
+                         #svdb_column{name = 'col_2',
+                                      type = ?COL_TYPE_H_UNIFORM,
+                                      constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]}
                         ]),
 
     %% Create a metric by the schema
     Window = 10,
-    Callback = fun({_SchemaName, _Key, _Value}) ->
+    Callback = fun(_SchemaName, {_Key, _Value}) ->
                         io:format("schema:~w, key:~w, value:~p",
                                   [_SchemaName, _Key, _Value]),
                         ok
@@ -47,10 +44,11 @@ sample() ->
 
     %% Notify events for a column (Counter)
     Key_1 = 'col_1',
-    savannadb_commons:notify(Schema, {Key_1, 128}),
-    savannadb_commons:notify(Schema, {Key_1, 256}),
-    savannadb_commons:notify(Schema, {Key_1, 384}),
-    savannadb_commons:notify(Schema, {Key_1, 512}),
+    savannadb_commons:notify(Schema, {Key_1,  128}),
+    savannadb_commons:notify(Schema, {Key_1,  256}),
+    savannadb_commons:notify(Schema, {Key_1,  384}),
+    savannadb_commons:notify(Schema, {Key_1,  512}),
+    savannadb_commons:notify(Schema, {Key_1, 1024}),
 
     %% Notify events for a column (Histogram)
     Key_2 = 'col_2',
@@ -58,9 +56,7 @@ sample() ->
     savannadb_commons:notify(Schema, {Key_2,  32}),
     savannadb_commons:notify(Schema, {Key_2,  64}),
     savannadb_commons:notify(Schema, {Key_2, 128}),
-    savannadb_commons:notify(Schema, {Key_2, 128}),
     savannadb_commons:notify(Schema, {Key_2, 256}),
-    savannadb_commons:notify(Schema, {Key_2, 512}),
 
     %% Retrieve stats
     {ok, _Ret_1} = savannadb_commons:get_metric_value(Schema, Key_1),

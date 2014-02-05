@@ -146,11 +146,11 @@ handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                  ['true']}]),
 
     %% Retrieve the current value, then execute the callback-function
-    Current = get_values_1(Tid, Window),
+    {ok, Current} = get_values_1(Tid, Window),
     case is_function(Callback) of
         true ->
             {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback({SchemaName, Key, Current});
+            catch Callback(SchemaName, {Key, Current});
         false ->
             void
     end,

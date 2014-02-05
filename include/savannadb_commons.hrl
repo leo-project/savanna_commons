@@ -21,6 +21,7 @@
 %%======================================================================
 -author('Yosuke Hara').
 
+-type(svdb_metric() :: atom()).
 -type(svdb_schema() :: atom()).
 -type(svdb_key()    :: atom()).
 -type(svdb_keyval() :: {atom(), any()}).
@@ -42,6 +43,11 @@
                                ?HISTOGRAM_SLIDE |
                                ?HISTOGRAM_SLIDE_UNIFORM).
 
+-define(HISTOGRAM_CONS_SAMPLE, 'sample').
+-define(HISTOGRAM_CONS_ALPHA,  'alpha').
+-type(svdb_histogram_constraint() :: ?HISTOGRAM_CONS_SAMPLE |
+                                     ?HISTOGRAM_CONS_ALPHA).
+
 -define(TBL_SCHEMAS, 'svdb_schemas').
 -define(TBL_COLUMNS, 'svdb_columns').
 
@@ -57,7 +63,6 @@
                             ?COL_TYPE_H_SLIDE_UNIFORM |
                             ?COL_TYPE_H_EXDEC |
                             ?COL_TYPE_HISTORY).
-
 
 %% Macro
 %% @doc Generate a metric-name from a schema-name and a key
