@@ -64,6 +64,7 @@
 start_link(Name, HistogramType, Callback) ->
     start_link(Name, HistogramType, ?DEF_WINDOW, Callback()).
 
+
 -spec(start_link(atom(), svdb_histogram_type(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
 start_link(Name, HistogramType, Window, Callback) ->
@@ -71,6 +72,11 @@ start_link(Name, HistogramType, Window, Callback) ->
 
 -spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
+start_link(Name, ?HISTOGRAM_SLIDE_UNIFORM = HistogramType, Window, SampleSize, Callback) ->
+    gen_server:start_link({local, Name}, ?MODULE,
+                          [Name, HistogramType, Window,
+                           {Window, SampleSize}, ?DEFAULT_ALPHA, Callback], []);
+
 start_link(Name, HistogramType, Window, SampleSize, Callback) ->
     start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
 
@@ -84,23 +90,35 @@ stop(Name) ->
     gen_server:call(Name, stop).
 
 
+%% @doc Retrieve value
+-spec(get_values(svdb_metric()) ->
+             {ok, list()}).
 get_values(Name) ->
     gen_server:call(Name, get_values).
 
 
+%% @doc Retrieve histogram-stat
+-spec(get_histogram_statistics(svdb_metric()) ->
+             {ok, list()} | not_found | {error, any()}).
 get_histogram_statistics(Name) ->
     gen_server:call(Name, get_histogram_statistics).
 
 
+%% @doc Put a value
+-spec(update(svdb_metric(), any()) ->
+             ok | {error, any()}).
 update(Name, Value) ->
     gen_server:call(Name, {update, Value}).
 
 
+%% @doc Resize the metric
+-spec(resize(svdb_metric(), pos_integer()) ->
+             ok | {error, any()}).
 resize(Name, NewSize) ->
     gen_server:call(Name, {resize, NewSize}).
 
 
-%% @doc
+%% @doc Remove values from the stats
 -spec(trim(atom(), atom(), pos_integer()) ->
              ok | {error, any()}).
 trim(Name, Tid, Window) ->
@@ -118,7 +136,6 @@ trim(Name, Tid, Window) ->
 init([Name, HistogramType, Window, SampleSize, Alpha, Callback]) ->
     Sample = #slide{window = Window},
     Reservoir = Sample#slide.reservoir,
-
     Pid = svdbc_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
     ok = folsom_ets:add_handler(histogram, Name, HistogramType, SampleSize, Alpha),
 
@@ -154,7 +171,7 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
     ok = svdbc_sample_slide_server:resize(Pid, NewSize),
     {reply, ok, State#state{window = NewSize}};
 
-handle_call({trim, Tid, Window}, _From, #state{name = Key,
+handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
@@ -167,7 +184,8 @@ handle_call({trim, Tid, Window}, _From, #state{name = Key,
 
     case is_function(Callback) of
         true ->
-            catch Callback({Key, Current});
+            {SchemaName, Key} = ?svdb_schema_and_key(Name),
+            catch Callback(SchemaName, {Key, Current});
         false ->
             void
     end,

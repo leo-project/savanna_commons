@@ -137,7 +137,7 @@ handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
     Reply = ets:update_counter(Tid, {count, Rnd}, Value),
     {reply, Reply, State};
 
-handle_call({trim, Tid, Window}, _From, #state{name = Key,
+handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
@@ -146,10 +146,11 @@ handle_call({trim, Tid, Window}, _From, #state{name = Key,
                                  ['true']}]),
 
     %% Retrieve the current value, then execute the callback-function
-    Current = get_values_1(Tid, Window),
+    {ok, Current} = get_values_1(Tid, Window),
     case is_function(Callback) of
         true ->
-            catch Callback({Key, Current});
+            {SchemaName, Key} = ?svdb_schema_and_key(Name),
+            catch Callback(SchemaName, {Key, Current});
         false ->
             void
     end,

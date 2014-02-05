@@ -38,23 +38,27 @@
 %% @doc Create a new metrics or histgram
 %%
 new(?METRIC_COUNTER, Schema, Key, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_metrics_counter:start_link(Name, Callback).
+
 new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_metrics_counter:start_link(Name, Window, Callback);
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Callback).
+
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, Callback).
+
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Callback).
+
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
@@ -116,8 +120,14 @@ create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_COUNTER,
     create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_UNIFORM,
                                          schema_name = Schema,
+                                         constraint  = Constraint,
                                          name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_UNIFORM, Schema, Key, Window, Callback),
+    HType = ?HISTOGRAM_UNIFORM,
+    {ok,_Pid} =
+        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
+            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
+            N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
+        end,
     create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE,
                                          schema_name = Schema,
@@ -126,13 +136,31 @@ create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE,
     create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE_UNIFORM,
                                          schema_name = Schema,
+                                         constraint  = Constraint,
                                          name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE_UNIFORM, Schema, Key, Window, Callback),
+    HType = ?HISTOGRAM_SLIDE_UNIFORM,
+    {ok,_Pid} =
+        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
+            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
+            N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
+        end,
     create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_EXDEC,
                                          schema_name = Schema,
+                                         constraint  = Constraint,
                                          name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_EXDEC, Schema, Key, Window, Callback),
+    HType = ?HISTOGRAM_EXDEC,
+    {ok,_Pid} =
+        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
+            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
+            N1 ->
+                case leo_misc:get_value(?HISTOGRAM_CONS_ALPHA, Constraint, []) of
+                    [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N1, Callback);
+                    N2 -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N1, N2, Callback)
+                end
+        end,
+
+    %% {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_EXDEC, Schema, Key, Window, Callback),
     create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1(_,_,_) ->
     {error, invalid_args}.
@@ -143,7 +171,7 @@ create_metrics_by_schema_1(_,_,_) ->
 -spec(notify(svdb_schema(), svdb_keyval()) ->
              ok | {error, any()}).
 notify(Schema, {Key, Event}) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     notify(check_type(Name), Name, Event).
 
 %% @private
@@ -160,7 +188,7 @@ notify(_,_,_) ->
 -spec(get_metric_value(svdb_schema(), atom()) ->
              {ok, any()} | {error, any()}).
 get_metric_value(Schema, Key) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     get_metric_value_1(check_type(Name), Name).
 
 %% @private
@@ -175,7 +203,7 @@ get_metric_value_1(_,_) ->
 %% @doc Retrieve a historgram statistics
 %%
 get_histogram_statistics(Schema, Key) ->
-    Name = gen_name(Schema, Key),
+    Name = ?svdb_metric_name(Schema, Key),
     case check_type(Name) of
         ?METRIC_HISTOGRAM ->
             svdbc_sample_slide:get_histogram_statistics(Name);
@@ -187,10 +215,6 @@ get_histogram_statistics(Schema, Key) ->
 %% ===================================================================
 %% Inner Functions
 %% ===================================================================
-%% @private
-gen_name(Schema, Key) ->
-    list_to_atom(lists:append([atom_to_list(Schema), "/", atom_to_list(Key)])).
-
 %% @private
 check_type(Name) ->
     check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name).
@@ -207,8 +231,8 @@ check_type([?METRIC_COUNTER = Type|Rest], Name) ->
     end;
 check_type([?METRIC_HISTOGRAM = Type|Rest], Name) ->
     case ets:lookup(?HISTOGRAM_TABLE, Name) of
-        [{Name,{histogram,_,{_,_,_,_}}}|_] ->
+        [{Name,{histogram,_,_}}|_] ->
             Type;
-        _ ->
+        _Other ->
             check_type(Rest, Name)
     end.
