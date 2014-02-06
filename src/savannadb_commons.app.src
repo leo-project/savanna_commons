@@ -22,7 +22,7 @@
 %%======================================================================
 {application, savannadb_commons,
  [
-  {description, "An Erlang svdbc library"},
+  {description, "SavannaDB's common library"},
   {vsn, "0.2.0"},
   {modules, [
              savannadb_commons

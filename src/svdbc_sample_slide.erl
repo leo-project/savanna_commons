@@ -173,11 +173,6 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
 
 handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
-    Oldest = folsom_utils:now_epoch() - Window,
-    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
-                                 [{'<', '$1', Oldest}],
-                                 ['true']}]),
-
     %% Retrieve the current value, then execute the callback-function
     {ok, Values} = get_values_1(Tid, Window),
     Current = bear:get_statistics(Values),
@@ -189,6 +184,12 @@ handle_call({trim, Tid, Window}, _From, #state{name = Name,
         false ->
             void
     end,
+
+    %% Remove oldest data
+    Oldest = folsom_utils:now_epoch() - Window,
+    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
+                                 [{'<', '$1', Oldest}],
+                                 ['true']}]),
     {reply, ok, State#state{before = Oldest}}.
 
 handle_cast(_Msg, State) ->

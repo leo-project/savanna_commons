@@ -139,12 +139,6 @@ handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
 
 handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
-    Oldest = folsom_utils:now_epoch() - Window,
-    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
-                                 [{is_integer, '$1'},
-                                  {'<', '$1', Oldest}],
-                                 ['true']}]),
-
     %% Retrieve the current value, then execute the callback-function
     {ok, Current} = get_values_1(Tid, Window),
     case is_function(Callback) of
@@ -154,6 +148,13 @@ handle_call({trim, Tid, Window}, _From, #state{name = Name,
         false ->
             void
     end,
+
+    %% Remove oldest data
+    Oldest = folsom_utils:now_epoch() - Window,
+    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
+                                 [{is_integer, '$1'},
+                                  {'<', '$1', Oldest}],
+                                 ['true']}]),
     {reply, ok, State#state{before = Oldest}}.
 
 
