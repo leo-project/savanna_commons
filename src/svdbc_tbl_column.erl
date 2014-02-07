@@ -29,8 +29,8 @@
 
 %% API
 -export([create_table/2,
-         all/0, get/1, find_by_schema_name/1,
-         update/1, delete/1,
+         all/0, get/2, find_by_schema_name/1,
+         update/1, delete/2,
          checksum/1, size/0
         ]).
 
@@ -78,15 +78,16 @@ all() ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(get(svdb_key()) ->
+-spec(get(svdb_schema(), svdb_key()) ->
              {ok, #svdb_column{}} | not_found | {error, any()}).
-get(ColumnName) ->
+get(Schema, ColumnName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
+                                        X#svdb_column.schema_name == Schema,
                                         X#svdb_column.name == ColumnName]),
                         qlc:e(Q)
                 end,
@@ -138,10 +139,10 @@ update(Column) ->
 
 %% @doc Remove system-configuration
 %%
--spec(delete(svdb_key()) ->
+-spec(delete(svdb_schema(), svdb_key()) ->
              ok | {error, any()}).
-delete(ColumnName) ->
-    case ?MODULE:get(ColumnName) of
+delete(Schema, ColumnName) ->
+    case ?MODULE:get(Schema, ColumnName) of
         {ok, Column} ->
             Fun = fun() ->
                           mnesia:delete_object(?TBL_NAME, Column, write)

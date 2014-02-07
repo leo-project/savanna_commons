@@ -61,16 +61,17 @@ suite() ->
 
     {atomic,ok} = svdbc_tbl_column:create_table(ram_copies, [node()]),
     not_found = svdbc_tbl_column:all(),
-    not_found = svdbc_tbl_column:get(Col_1#svdb_column.name),
+    not_found = svdbc_tbl_column:get(Col_1#svdb_column.schema_name,
+                                     Col_1#svdb_column.name),
 
     ok = svdbc_tbl_column:update(Col_1),
     ok = svdbc_tbl_column:update(Col_2),
     ok = svdbc_tbl_column:update(Col_3),
 
-    {ok, Ret_1} = svdbc_tbl_column:get(Col_1#svdb_column.name),
-    {ok, Ret_2} = svdbc_tbl_column:get(Col_2#svdb_column.name),
-    {ok, Ret_3} = svdbc_tbl_column:get(Col_3#svdb_column.name),
-    not_found = svdbc_tbl_column:get('col_4'),
+    {ok, Ret_1} = svdbc_tbl_column:get(Col_1#svdb_column.schema_name, Col_1#svdb_column.name),
+    {ok, Ret_2} = svdbc_tbl_column:get(Col_2#svdb_column.schema_name, Col_2#svdb_column.name),
+    {ok, Ret_3} = svdbc_tbl_column:get(Col_3#svdb_column.schema_name, Col_3#svdb_column.name),
+    not_found = svdbc_tbl_column:get(SchemaName,'col_4'),
     Checksum_1 = svdbc_tbl_column:checksum(SchemaName),
     Size_1 = svdbc_tbl_column:size(),
 
@@ -79,8 +80,8 @@ suite() ->
     ?assertEqual(Col_3, Ret_3),
     ?assertEqual(3, Size_1),
 
-    ok = svdbc_tbl_column:delete(Col_1#svdb_column.name),
-    not_found = svdbc_tbl_column:get(Col_1#svdb_column.name),
+    ok = svdbc_tbl_column:delete(Col_1#svdb_column.schema_name, Col_1#svdb_column.name),
+    not_found = svdbc_tbl_column:get(Col_1#svdb_column.schema_name, Col_1#svdb_column.name),
 
     Checksum_2 = svdbc_tbl_column:checksum(SchemaName),
     ?assertEqual(true, Checksum_1 /= Checksum_2),
