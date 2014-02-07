@@ -43,7 +43,7 @@
                 server     :: pid(),
                 reservoir  :: pos_integer(),
                 before = 0 :: pos_integer(),
-                callback   :: function()
+                callback   :: atom() %% see:'svdbc_notify_behaviour'
                }).
 
 -include("savannadb_commons.hrl").
@@ -177,10 +177,10 @@ handle_call({trim, Tid, Window}, _From, #state{name = Name,
     {ok, Values} = get_values_1(Tid, Window),
     Current = bear:get_statistics(Values),
 
-    case is_function(Callback) of
+    case is_atom(Callback) of
         true ->
             {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback(SchemaName, {Key, Current});
+            catch Callback:notify(SchemaName, {Key, Current});
         false ->
             void
     end,

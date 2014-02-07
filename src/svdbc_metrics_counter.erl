@@ -48,7 +48,7 @@
                 window = 0 :: pos_integer(),
                 reservoir  :: pos_integer(),
                 before = 0 :: pos_integer(),
-                callback   :: function()
+                callback   :: atom() %% see:'svdbc_notify_behaviour'
                }).
 
 -define(DEF_WINDOW, 60).
@@ -141,10 +141,10 @@ handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
     %% Retrieve the current value, then execute the callback-function
     {ok, Current} = get_values_1(Tid, Window),
-    case is_function(Callback) of
+    case is_atom(Callback) of
         true ->
             {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback(SchemaName, {Key, Current});
+            catch Callback:notify(SchemaName, {Key, Current});
         false ->
             void
     end,
