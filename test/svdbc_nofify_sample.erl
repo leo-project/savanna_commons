@@ -1,7 +1,6 @@
-%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %%======================================================================
 %%
-%% LeoProject - SavannaDB Commons
+%% LeoProject - SavannaDB
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -20,17 +19,14 @@
 %% under the License.
 %%
 %%======================================================================
-{application, savannadb_commons,
- [
-  {description, "SavannaDB's common library"},
-  {vsn, "0.2.1"},
-  {modules, [
-             savannadb_commons
-            ]},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {env, []}
- ]}.
+-module(svdbc_nofify_sample).
+-author('Yosuke Hara').
+
+-behaviour(svdbc_notify_behaviour).
+
+-include_lib("eunit/include/eunit.hrl").
+-export([notify/2]).
+
+notify(Schema, {Key, Values}) ->
+    ?debugVal({Schema, {Key, Values}}),
+    ok.

@@ -53,12 +53,7 @@ counter_metrics() ->
     Schema = 'test',
     Key = 'c1',
     Window = 10,
-    Callback = fun(_Schema, {_Key, _Value}) ->
-                       ?debugVal(_Schema),
-                       ?debugVal({_Key,_Value}),
-                       ok
-               end,
-    savannadb_commons:new(?METRIC_COUNTER, Schema, Key, Window, Callback),
+    savannadb_commons:new(?METRIC_COUNTER, Schema, Key, Window, 'svdbc_nofify_sample'),
     savannadb_commons:notify(Schema, {Key, 128}),
     savannadb_commons:notify(Schema, {Key, 256}),
     savannadb_commons:notify(Schema, {Key, 384}),
@@ -76,12 +71,7 @@ histogram() ->
     Schema = 'test',
     Key = 'h1',
     Window = 10,
-    Callback = fun(_Schema, {_Key,_Value}) ->
-                       ?debugVal(_Schema),
-                       ?debugVal({_Key, _Value}),
-                       ok
-               end,
-    savannadb_commons:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
+    savannadb_commons:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, 'svdbc_nofify_sample'),
     savannadb_commons:notify(Schema, {Key,  16}),
     savannadb_commons:notify(Schema, {Key,  32}),
     savannadb_commons:notify(Schema, {Key,  64}),
@@ -142,12 +132,7 @@ create_schema() ->
 create_metrics_by_shcema() ->
     Schema = 'test_1',
     Window = 10,
-    Callback = fun(_SchemaName, {_Key, _Value}) ->
-                       ?debugVal(_SchemaName),
-                       ?debugVal({_Key, _Value}),
-                       ok
-               end,
-    ok = savannadb_commons:create_metrics_by_schema(Schema, Window, Callback),
+    ok = savannadb_commons:create_metrics_by_schema(Schema, Window, 'svdbc_nofify_sample'),
     Key_1 = 'col_1',
     savannadb_commons:notify(Schema, {Key_1, 128}),
     savannadb_commons:notify(Schema, {Key_1, 256}),

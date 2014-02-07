@@ -6,7 +6,13 @@ An original statistics library, which is able to easily realize to calculate sta
 
 ```erlang
 
+-behaviour(svdbc_notify_behaviour).
 -include("savannadb_commons.hrl").
+
+notify(Schema, {Key, Values}) ->
+    io:format("schema:~w, key:~w, value:~p",
+              [SchemaName, Key, Value]),
+    ok.
 
 sample() ->
     %% Start "folsom"
@@ -35,12 +41,7 @@ sample() ->
 
     %% Create a metric by the schema
     Window = 10,
-    Callback = fun(_SchemaName, {_Key, _Value}) ->
-                        io:format("schema:~w, key:~w, value:~p",
-                                  [_SchemaName, _Key, _Value]),
-                        ok
-                end,
-    ok = savannadb_commons:create_metrics_by_schema(SchemaName, Window, Callback),
+    ok = savannadb_commons:create_metrics_by_schema(SchemaName, Window, ?MODULE),
 
     %% Notify events for a column (Counter)
     Key_1 = 'col_1',

@@ -25,6 +25,7 @@
 -type(svdb_schema() :: atom()).
 -type(svdb_key()    :: atom()).
 -type(svdb_keyval() :: {atom(), any()}).
+-type(svdb_values() :: list(tuple())).
 
 -define(ERROR_ETS_NOT_AVAILABLE, "ETS is not available").
 -define(ERROR_MNESIA_NOT_START,  "").

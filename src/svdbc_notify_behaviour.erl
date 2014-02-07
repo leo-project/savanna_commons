@@ -1,7 +1,6 @@
-%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %%======================================================================
 %%
-%% LeoProject - SavannaDB Commons
+%% LeoProject - SavannaDB
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -20,17 +19,12 @@
 %% under the License.
 %%
 %%======================================================================
-{application, savannadb_commons,
- [
-  {description, "SavannaDB's common library"},
-  {vsn, "0.2.1"},
-  {modules, [
-             savannadb_commons
-            ]},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {env, []}
- ]}.
+-module(svdbc_notify_behaviour).
+-author('Yosuke Hara').
+
+-include("savannadb_commons.hrl").
+
+%% @doc Notify metric(s) and statistics to a callback-mod
+%%
+-callback(notify(Schema::svdb_schema(), {Key::svdb_key(), Values::svdb_values()}) ->
+                 ok | {error, any()}).

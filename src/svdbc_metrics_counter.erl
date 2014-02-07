@@ -48,7 +48,7 @@
                 window = 0 :: pos_integer(),
                 reservoir  :: pos_integer(),
                 before = 0 :: pos_integer(),
-                callback   :: function()
+                callback   :: atom() %% see:'svdbc_notify_behaviour'
                }).
 
 -define(DEF_WINDOW, 60).
@@ -139,21 +139,22 @@ handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
 
 handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
+    %% Retrieve the current value, then execute the callback-function
+    {ok, Current} = get_values_1(Tid, Window),
+    case is_atom(Callback) of
+        true ->
+            {SchemaName, Key} = ?svdb_schema_and_key(Name),
+            catch Callback:notify(SchemaName, {Key, Current});
+        false ->
+            void
+    end,
+
+    %% Remove oldest data
     Oldest = folsom_utils:now_epoch() - Window,
     _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
                                  [{is_integer, '$1'},
                                   {'<', '$1', Oldest}],
                                  ['true']}]),
-
-    %% Retrieve the current value, then execute the callback-function
-    {ok, Current} = get_values_1(Tid, Window),
-    case is_function(Callback) of
-        true ->
-            {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback(SchemaName, {Key, Current});
-        false ->
-            void
-    end,
     {reply, ok, State#state{before = Oldest}}.
 
 

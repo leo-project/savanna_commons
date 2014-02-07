@@ -43,7 +43,7 @@
                 server     :: pid(),
                 reservoir  :: pos_integer(),
                 before = 0 :: pos_integer(),
-                callback   :: function()
+                callback   :: atom() %% see:'svdbc_notify_behaviour'
                }).
 
 -include("savannadb_commons.hrl").
@@ -173,22 +173,23 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
 
 handle_call({trim, Tid, Window}, _From, #state{name = Name,
                                                callback = Callback} = State) ->
-    Oldest = folsom_utils:now_epoch() - Window,
-    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
-                                 [{'<', '$1', Oldest}],
-                                 ['true']}]),
-
     %% Retrieve the current value, then execute the callback-function
     {ok, Values} = get_values_1(Tid, Window),
     Current = bear:get_statistics(Values),
 
-    case is_function(Callback) of
+    case is_atom(Callback) of
         true ->
             {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback(SchemaName, {Key, Current});
+            catch Callback:notify(SchemaName, {Key, Current});
         false ->
             void
     end,
+
+    %% Remove oldest data
+    Oldest = folsom_utils:now_epoch() - Window,
+    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
+                                 [{'<', '$1', Oldest}],
+                                 ['true']}]),
     {reply, ok, State#state{before = Oldest}}.
 
 handle_cast(_Msg, State) ->
