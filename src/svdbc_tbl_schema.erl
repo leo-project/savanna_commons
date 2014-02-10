@@ -65,7 +65,7 @@ all() ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME)]),
-                        Q2 = qlc:sort(Q1, [{order, descending}]),
+                        Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
             leo_mnesia:read(F)
