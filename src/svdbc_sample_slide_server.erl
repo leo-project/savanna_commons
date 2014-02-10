@@ -99,7 +99,7 @@ handle_info(timeout, State=#state{sample_mod = SampleMod,
                                   sample_server_id = undefined,
                                   reservoir = Reservoir,
                                   window = Window}) ->
-    spawn(fun() ->                  
+    spawn(fun() ->
                   catch SampleMod:trim(Reservoir, Window)
           end),
     {noreply, State, timeout(Window)};
@@ -108,7 +108,9 @@ handle_info(timeout, State=#state{sample_mod = SampleMod,
                                   sample_server_id = SampleSeverId,
                                   reservoir = Reservoir,
                                   window = Window}) ->
-    SampleMod:trim(SampleSeverId, Reservoir, Window),
+    spawn(fun() ->
+                  catch SampleMod:trim(SampleSeverId, Reservoir, Window)
+          end),
     {noreply, State, timeout(Window)};
 
 handle_info(_Info, State) ->

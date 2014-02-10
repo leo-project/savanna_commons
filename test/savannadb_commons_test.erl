@@ -50,7 +50,7 @@ suite_test_() ->
       {"test counter metrics for 60sec",
        {timeout, 120, fun counter_metrics_2/0}},
       {"test counter metrics for 60sec",
-       {timeout, 120, fun histogram_2/0}}
+       {timeout, 180, fun histogram_2/0}}
      ]}.
 
 counter_metrics_1() ->
@@ -246,13 +246,13 @@ inspect_1(Schema, Key, _, EndTime) ->
 histogram_2() ->
     Schema = 'test_histogram',
     Key = 'h1',
-    Window = 30,
+    Window = 10,
     SampleSize = 3000,
     savannadb_commons:new(?METRIC_HISTOGRAM,
                           ?HISTOGRAM_SLIDE,
                           Schema, Key, Window, SampleSize, 'svdbc_nofify_sample'),
     StartTime = leo_date:now(),
-    EndTime   = StartTime + 90,
+    EndTime   = StartTime + 120,
     inspect_2(Schema, Key, StartTime, EndTime),
     ok.
 
