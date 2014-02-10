@@ -28,5 +28,10 @@
 -export([notify/2]).
 
 notify(Schema, {Key, Values}) ->
-    ?debugVal({Schema, {Key, Values}}),
+    case Schema of
+        'test_counter' ->
+            ?debugVal({Schema, {Key, Values}});
+        _ ->
+            void
+    end,
     ok.

@@ -23,6 +23,7 @@
 -author('Yosuke Hara').
 
 -export([new/4, new/5, new/6, new/7, new/8,
+         stop/2,
          create_schema/2,
          create_metrics_by_schema/3,
          notify/2, get_metric_value/2,
@@ -60,6 +61,19 @@ new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback)
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
     Name = ?svdb_metric_name(Schema, Key),
     svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
+
+
+%% @doc Stop a process
+stop(Schema, Key) ->
+    Name = ?svdb_metric_name(Schema, Key),
+    case check_type(Name) of
+        ?METRIC_COUNTER ->
+            svdbc_metrics_counter:stop(Name);
+        ?METRIC_HISTOGRAM ->
+            svdbc_sample_slide:start_link(Name);
+        _ ->
+            ok
+    end.
 
 
 %% doc Create a new metrics or histgram from the schema
@@ -176,7 +190,7 @@ notify(Schema, {Key, Event}) ->
 
 %% @private
 notify(?METRIC_COUNTER, Name, Event) ->
-    folsom_metrics:notify({Name, Event});
+    folsom_metrics:notify({Name, {inc, Event}});
 notify(?METRIC_HISTOGRAM, Name, Event) ->
     svdbc_sample_slide:update(Name, Event);
 notify(_,_,_) ->
@@ -223,8 +237,8 @@ check_type(Name) ->
 check_type([],_Name) ->
     not_found;
 check_type([?METRIC_COUNTER = Type|Rest], Name) ->
-    case ets:lookup(?SPIRAL_TABLE, Name) of
-        [{Name,{spiral,_,_}}|_] ->
+    case ets:lookup(?COUNTER_TABLE, {Name, 0}) of
+        [{{Name, 0},0}|_] ->
             Type;
         _ ->
             check_type(Rest, Name)

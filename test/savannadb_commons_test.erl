@@ -40,16 +40,18 @@ suite_test_() ->
      end,
      [
       {"test sliding counter-metrics",
-       {timeout, 30, fun counter_metrics/0}},
+       {timeout, 30, fun counter_metrics_1/0}},
       {"test sliding histogram",
        {timeout, 30, fun histogram/0}},
       {"test creating schema",
        {timeout, 30, fun create_schema/0}},
       {"test creating metrics by a schema",
-       {timeout, 30, fun create_metrics_by_shcema/0}}
+       {timeout, 30, fun create_metrics_by_shcema/0}},
+      {"test counter metrics for 120sec",
+       {timeout, 120, fun counter_metrics_2/0}}
      ]}.
 
-counter_metrics() ->
+counter_metrics_1() ->
     Schema = 'test',
     Key = 'c1',
     Window = 10,
@@ -59,12 +61,13 @@ counter_metrics() ->
     savannadb_commons:notify(Schema, {Key, 384}),
     savannadb_commons:notify(Schema, {Key, 512}),
     {ok, Ret_1} = savannadb_commons:get_metric_value(Schema, Key),
-    ?assertEqual([{count,1280},{one,1280}], Ret_1),
+    ?assertEqual(1280, Ret_1),
 
-    %% @TODO - check sent value into the db
-    timer:sleep(Window * 2000 + 100),
+    timer:sleep(Window * 1100),
     {ok, Ret_2} = savannadb_commons:get_metric_value(Schema, Key),
-    ?assertEqual([{count,1280},{one,0}], Ret_2),
+    ?assertEqual(0, Ret_2),
+
+    %% savannadb_commons:stop(Schema, Key),
     ok.
 
 histogram() ->
@@ -89,8 +92,7 @@ histogram() ->
     ?assertEqual(128, leo_misc:get_value('median', Ret_1)),
     ?assertEqual(7,   leo_misc:get_value('n',      Ret_1)),
 
-    %% @TODO - check sent value into the db
-    timer:sleep(Window * 2000 + 100),
+    timer:sleep(Window * 1100),
     {ok, Ret_2} = savannadb_commons:get_histogram_statistics(Schema, Key),
     ?assertEqual(0.0, leo_misc:get_value('min',    Ret_2)),
     ?assertEqual(0.0, leo_misc:get_value('max',    Ret_2)),
@@ -202,7 +204,7 @@ create_metrics_by_shcema() ->
     {ok, Ret_4} = savannadb_commons:get_histogram_statistics(Schema, Key_4),
     {ok, Ret_5} = savannadb_commons:get_histogram_statistics(Schema, Key_5),
 
-    ?assertEqual([{count,1280},{one,1280}], Ret_1),
+    ?assertEqual(1280, Ret_1),
     ?assertEqual(16,   leo_misc:get_value('min',    Ret_2)),
     ?assertEqual(1024, leo_misc:get_value('max',    Ret_2)),
     ?assertEqual(128,  leo_misc:get_value('median', Ret_2)),
@@ -211,5 +213,28 @@ create_metrics_by_shcema() ->
     ?assertEqual(true, [] /= Ret_4),
     ?assertEqual(true, [] /= Ret_5),
 
-    timer:sleep(Window * 2000 + 100),
+    timer:sleep(Window * 1100),
     ok.
+
+%%
+counter_metrics_2() ->
+    Schema = 'test_counter',
+    Key = 'col_1',
+    Window = 60,
+    ok = savannadb_commons:create_schema(
+           Schema, [#svdb_column{name = Key,
+                                 type = ?COL_TYPE_COUNTER,
+                                 constraint = []}
+                   ]),
+    ok = savannadb_commons:create_metrics_by_schema(Schema, Window, 'svdbc_nofify_sample'),
+
+    StartTime = leo_date:now(),
+    EndTime   = StartTime + 65,
+    inspect_1(Schema, Key, StartTime, EndTime),
+    ok.
+
+inspect_1(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
+    ok;
+inspect_1(Schema, Key, _, EndTime) ->
+    savannadb_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(),127)}),
+    inspect_1(Schema, Key, leo_date:now(), EndTime).
