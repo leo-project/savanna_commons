@@ -31,6 +31,8 @@ notify(Schema, {Key, Values}) ->
     case Schema of
         'test_counter' ->
             ?debugVal({Schema, {Key, Values}});
+        'test_histogram' ->
+            ?debugVal({Schema, {Key, Values}});
         _ ->
             void
     end,

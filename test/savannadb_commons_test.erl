@@ -41,14 +41,16 @@ suite_test_() ->
      [
       {"test sliding counter-metrics",
        {timeout, 30, fun counter_metrics_1/0}},
-      {"test sliding histogram",
-       {timeout, 30, fun histogram/0}},
+      {"test sliding histogram_1",
+       {timeout, 30, fun histogram_1/0}},
       {"test creating schema",
        {timeout, 30, fun create_schema/0}},
       {"test creating metrics by a schema",
        {timeout, 30, fun create_metrics_by_shcema/0}},
-      {"test counter metrics for 120sec",
-       {timeout, 120, fun counter_metrics_2/0}}
+      {"test counter metrics for 60sec",
+       {timeout, 120, fun counter_metrics_2/0}},
+      {"test counter metrics for 60sec",
+       {timeout, 120, fun histogram_2/0}}
      ]}.
 
 counter_metrics_1() ->
@@ -70,7 +72,7 @@ counter_metrics_1() ->
     %% savannadb_commons:stop(Schema, Key),
     ok.
 
-histogram() ->
+histogram_1() ->
     Schema = 'test',
     Key = 'h1',
     Window = 10,
@@ -220,7 +222,7 @@ create_metrics_by_shcema() ->
 counter_metrics_2() ->
     Schema = 'test_counter',
     Key = 'col_1',
-    Window = 60,
+    Window = 30,
     ok = savannadb_commons:create_schema(
            Schema, [#svdb_column{name = Key,
                                  type = ?COL_TYPE_COUNTER,
@@ -238,3 +240,25 @@ inspect_1(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
 inspect_1(Schema, Key, _, EndTime) ->
     savannadb_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(),127)}),
     inspect_1(Schema, Key, leo_date:now(), EndTime).
+
+
+%%
+histogram_2() ->
+    Schema = 'test_histogram',
+    Key = 'h1',
+    Window = 30,
+    SampleSize = 3000,
+    savannadb_commons:new(?METRIC_HISTOGRAM,
+                          ?HISTOGRAM_SLIDE,
+                          Schema, Key, Window, SampleSize, 'svdbc_nofify_sample'),
+    StartTime = leo_date:now(),
+    EndTime   = StartTime + 90,
+    inspect_2(Schema, Key, StartTime, EndTime),
+    ok.
+
+
+inspect_2(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
+    ok;
+inspect_2(Schema, Key, _, EndTime) ->
+    savannadb_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(), 1023)}),
+    inspect_2(Schema, Key, leo_date:now(), EndTime).

@@ -30,6 +30,9 @@
 
 -behaviour(gen_server).
 
+-include_lib("folsom/include/folsom.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
 %% API
 -export([start_link/3, start_link/4,
          stop/1, resize/2]).
@@ -38,13 +41,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include_lib("folsom/include/folsom.hrl").
--include_lib("eunit/include/eunit.hrl").
-
 -record(state, {sample_mod,
                 sample_server_id,
                 reservoir,
                 window}).
+
+-define(DEF_TIMEOUT, 60000).
 
 %%--------------------------------------------------------------------
 %% API
@@ -97,7 +99,9 @@ handle_info(timeout, State=#state{sample_mod = SampleMod,
                                   sample_server_id = undefined,
                                   reservoir = Reservoir,
                                   window = Window}) ->
-    catch SampleMod:trim(Reservoir, Window),
+    spawn(fun() ->                  
+                  catch SampleMod:trim(Reservoir, Window)
+          end),
     {noreply, State, timeout(Window)};
 
 handle_info(timeout, State=#state{sample_mod = SampleMod,

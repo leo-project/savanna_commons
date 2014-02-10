@@ -52,6 +52,8 @@
 
 -define(DEF_WINDOW, 10).
 -define(DEF_WIDTH,  16).
+-define(DEF_TIMEOUT, 30000).
+
 
 %%--------------------------------------------------------------------
 %% API
@@ -72,14 +74,14 @@ stop(Name) ->
 -spec(get_values(atom()) ->
              {ok, tuple()} | {error, any()}).
 get_values(Name) ->
-    gen_server:call(Name, get_values).
+    gen_server:call(Name, get_values, ?DEF_TIMEOUT).
 
 
 %% @doc
 -spec(trim(atom(), atom(), pos_integer()) ->
              ok | {error, any()}).
 trim(Name, Tid, Window) ->
-    gen_server:call(Name, {trim, Tid, Window}).
+    gen_server:call(Name, {trim, Tid, Window}, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------

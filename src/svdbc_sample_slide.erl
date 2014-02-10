@@ -50,8 +50,9 @@
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(DEF_WIDTH,  16).
--define(DEF_WINDOW, 60).
+-define(DEF_WIDTH,   16).
+-define(DEF_WINDOW,  60).
+-define(DEF_TIMEOUT, 30000).
 
 
 %%--------------------------------------------------------------------
@@ -94,35 +95,35 @@ stop(Name) ->
 -spec(get_values(svdb_metric()) ->
              {ok, list()}).
 get_values(Name) ->
-    gen_server:call(Name, get_values).
+    gen_server:call(Name, get_values, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve histogram-stat
 -spec(get_histogram_statistics(svdb_metric()) ->
              {ok, list()} | not_found | {error, any()}).
 get_histogram_statistics(Name) ->
-    gen_server:call(Name, get_histogram_statistics).
+    gen_server:call(Name, get_histogram_statistics, ?DEF_TIMEOUT).
 
 
 %% @doc Put a value
 -spec(update(svdb_metric(), any()) ->
              ok | {error, any()}).
 update(Name, Value) ->
-    gen_server:call(Name, {update, Value}).
+    gen_server:call(Name, {update, Value}, ?DEF_TIMEOUT).
 
 
 %% @doc Resize the metric
 -spec(resize(svdb_metric(), pos_integer()) ->
              ok | {error, any()}).
 resize(Name, NewSize) ->
-    gen_server:call(Name, {resize, NewSize}).
+    gen_server:call(Name, {resize, NewSize}, ?DEF_TIMEOUT).
 
 
 %% @doc Remove values from the stats
 -spec(trim(atom(), atom(), pos_integer()) ->
              ok | {error, any()}).
 trim(Name, Tid, Window) ->
-    gen_server:call(Name, {trim, Tid, Window}).
+    gen_server:call(Name, {trim, Tid, Window}, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------

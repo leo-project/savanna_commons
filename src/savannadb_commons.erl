@@ -70,7 +70,7 @@ stop(Schema, Key) ->
         ?METRIC_COUNTER ->
             svdbc_metrics_counter:stop(Name);
         ?METRIC_HISTOGRAM ->
-            svdbc_sample_slide:start_link(Name);
+            svdbc_sample_slide:stop(Name);
         _ ->
             ok
     end.
