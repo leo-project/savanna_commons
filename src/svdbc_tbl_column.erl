@@ -110,7 +110,7 @@ find_by_schema_name(SchemaName) ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#svdb_column.schema_name == SchemaName]),
+                                         X#svdb_column.schema_name == SchemaName]),
                         Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
@@ -132,7 +132,9 @@ update(Column) ->
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            F = fun()-> mnesia:write(?TBL_NAME, Column, write) end,
+            Column_1 = Column#svdb_column{id = ?MODULE:size() + 1,
+                                          created_at = leo_date:now()},
+            F = fun()-> mnesia:write(?TBL_NAME, Column_1, write) end,
             leo_mnesia:write(F)
     end.
 
