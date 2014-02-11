@@ -85,7 +85,7 @@ histogram_1() ->
     savannadb_commons:notify(Schema, {Key, 256}),
     savannadb_commons:notify(Schema, {Key, 512}),
 
-    {ok, Ret} = savannadb_commons:get_metric_value(Schema, Key),
+    Ret = savannadb_commons:get_metric_value(Schema, Key),
     ?assertEqual([16,32,64,128,128,256,512], Ret),
 
     {ok, Ret_1} = savannadb_commons:get_histogram_statistics(Schema, Key),

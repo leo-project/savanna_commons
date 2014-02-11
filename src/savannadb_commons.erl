@@ -48,19 +48,19 @@ new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
     Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Callback).
+    svdbc_metrics_histogram:start_link(Name, HistogramType, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
     Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, Callback).
+    svdbc_metrics_histogram:start_link(Name, HistogramType, Window, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
     Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Callback).
+    svdbc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
     Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
+    svdbc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
 %% @doc Stop a process
@@ -70,7 +70,7 @@ stop(Schema, Key) ->
         ?METRIC_COUNTER ->
             svdbc_metrics_counter:stop(Name);
         ?METRIC_HISTOGRAM ->
-            svdbc_sample_slide:stop(Name);
+            svdbc_metrics_histogram:stop(Name);
         _ ->
             ok
     end.
@@ -192,7 +192,7 @@ notify(Schema, {Key, Event}) ->
 notify(?METRIC_COUNTER, Name, Event) ->
     folsom_metrics:notify({Name, {inc, Event}});
 notify(?METRIC_HISTOGRAM, Name, Event) ->
-    svdbc_sample_slide:update(Name, Event);
+    svdbc_metrics_histogram:update(Name, Event);
 notify(_,_,_) ->
     {error, invalid_args}.
 
@@ -209,7 +209,7 @@ get_metric_value(Schema, Key) ->
 get_metric_value_1(?METRIC_COUNTER, Name) ->
     svdbc_metrics_counter:get_values(Name);
 get_metric_value_1(?METRIC_HISTOGRAM, Name) ->
-    svdbc_sample_slide:get_values(Name);
+    svdbc_metrics_histogram:get_values(Name);
 get_metric_value_1(_,_) ->
     {error, invalid_args}.
 
@@ -220,7 +220,7 @@ get_histogram_statistics(Schema, Key) ->
     Name = ?svdb_metric_name(Schema, Key),
     case check_type(Name) of
         ?METRIC_HISTOGRAM ->
-            svdbc_sample_slide:get_histogram_statistics(Name);
+            svdbc_metrics_histogram:get_histogram_statistics(Name);
         _ ->
             not_found
     end.
