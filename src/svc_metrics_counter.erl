@@ -105,7 +105,6 @@ handle_call(stop, _From, #state{server = _Pid} = State) ->
 
 
 handle_call(get_values, _From, #state{name = Name} = State) ->
-    %% Reply = get_values_1(Tid, Window),
     Count = folsom_metrics_counter:get_value(Name),
     {reply, {ok, Count}, State};
 

@@ -27,14 +27,14 @@
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/2]).
 
-notify(Schema, {Key, Values}) ->
-    case Schema of
+notify(MetricGroup, {Key, Values}) ->
+    case MetricGroup of
         'test_counter' ->
-            ?debugVal({Schema, {Key, Values}});
+            ?debugVal({MetricGroup, {Key, Values}});
         'test_histogram_1' ->
-            ?debugVal({Schema, {Key, Values}});
+            ?debugVal({MetricGroup, {Key, Values}});
         'test_histogram_2' ->
-            ?debugVal({Schema, {Key, Values}});
+            ?debugVal({MetricGroup, {Key, Values}});
         _ ->
             void
     end,

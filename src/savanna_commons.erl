@@ -39,34 +39,34 @@
 %% ===================================================================
 %% @doc Create a new metrics or histgram
 %%
-new(?METRIC_COUNTER, Schema, Key, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_COUNTER, MetricGroup, Key, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_counter:start_link(Name, Callback).
 
-new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_COUNTER, MetricGroup, Key, Window, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_counter:start_link(Name, Window, Callback);
 
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_histogram:start_link(Name, HistogramType, Callback).
 
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_histogram:start_link(Name, HistogramType, Window, Callback).
 
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Callback).
 
-new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
-    Name = ?sv_metric_name(Schema, Key),
+new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Alpha, Callback) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
 %% @doc Stop a process
-stop(Schema, Key) ->
-    Name = ?sv_metric_name(Schema, Key),
+stop(MetricGroup, Key) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     case check_type(Name) of
         ?METRIC_COUNTER ->
             svc_metrics_counter:stop(Name);
@@ -121,11 +121,12 @@ create_metrics_by_schema(SchemaName, Window, Callback) ->
 create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
     case svc_tbl_schema:get(SchemaName) of
         {ok,_} ->
-            case svc_tbl_metric_group:update(#sv_metric_group{schema_name = SchemaName,
-                                                              name = MetricGroupName}) of
-                ok ->
-                    case svc_tbl_column:find_by_schema_name(SchemaName) of
-                        {ok, Columns} ->
+            case svc_tbl_column:find_by_schema_name(SchemaName) of
+                {ok, Columns} ->
+                    case svc_tbl_metric_group:update(
+                           #sv_metric_group{schema_name = SchemaName,
+                                            name = MetricGroupName}) of
+                        ok ->
                             create_metrics_by_schema_1(
                               MetricGroupName, Columns, Window, Callback);
                         Error ->

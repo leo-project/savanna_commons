@@ -215,9 +215,9 @@ handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
     %% Retrieve the current value, then execute the callback-function
     case is_atom(Callback) of
         true ->
-            {SchemaName, Key} = ?sv_schema_and_key(Name),
+            {MetricGroup, Key} = ?sv_schema_and_key(Name),
             CurrentStat = get_current_statistics(Name),
-            catch Callback:notify(SchemaName, {Key, CurrentStat});
+            catch Callback:notify(MetricGroup, {Key, CurrentStat});
         false ->
             void
     end,

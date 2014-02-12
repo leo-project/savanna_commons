@@ -63,18 +63,22 @@
                           ?COL_TYPE_H_EXDEC |
                           ?COL_TYPE_HISTORY).
 
+-define(SV_PREFIX_NAME, "sv_").
+
 %% Macro
 %% @doc Generate a metric-name from a schema-name and a key
--define(sv_metric_name(_Schema, _Key),
-        list_to_atom(lists:append([atom_to_list(_Schema), ".", atom_to_list(_Key)]))).
+-define(sv_metric_name(_MetricGroup, _Key),
+        list_to_atom(lists:append([?SV_PREFIX_NAME,
+                                   atom_to_list(_MetricGroup), ".", atom_to_list(_Key)]))).
 
 %% @doc Retrieve a schema-name and a key from a metric-name
--define(sv_schema_and_key(_MetricName),
+-define(sv_schema_and_key(_MetricGroupName),
         begin
-            _MetricName_1 = atom_to_list(_MetricName),
-            _Index  = string:chr(_MetricName_1, $.),
-            _Schema = list_to_atom(string:sub_string(_MetricName_1, 1, _Index-1)),
-            _Key    = list_to_atom(string:sub_string(_MetricName_1, _Index + 1)),
+            _MetricGroupName_1 = atom_to_list(_MetricGroupName),
+            _PrefixLen = length(?SV_PREFIX_NAME),
+            _Index  = string:chr(_MetricGroupName_1, $.),
+            _Schema = list_to_atom(string:sub_string(_MetricGroupName_1, 1 + _PrefixLen, _Index - 1)),
+            _Key    = list_to_atom(string:sub_string(_MetricGroupName_1, _Index + 1)),
             {_Schema,_Key}
         end).
 
