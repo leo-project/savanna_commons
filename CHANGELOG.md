@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.2.2 (Feb 12, 2014)
+
+* Improve histogram-metrics
+
 ## 0.2.1 (Feb 7, 2014)
 
 * Add a behaviour of notifier in order to collect metrics and statistics
