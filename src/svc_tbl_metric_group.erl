@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - Savanna Commons
+%% LeoProject - SavannaDB
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %%======================================================================
--module(svc_tbl_column).
+-module(svc_tbl_metric_group).
 -author('Yosuke Hara').
 
 -include("savanna_commons.hrl").
@@ -29,12 +29,13 @@
 
 %% API
 -export([create_table/2,
-         all/0, get/2, find_by_schema_name/1,
+         all/0,
+         get/2, find_by_schema_name/1,
          update/1, delete/2,
          checksum/1, size/0
         ]).
 
--define(TBL_NAME, ?TBL_COLUMNS).
+-define(TBL_NAME, ?TBL_METRIC_GRP).
 
 %%--------------------------------------------------------------------
 %% API
@@ -43,17 +44,16 @@
 %%
 create_table(Mode, Nodes) ->
     mnesia:create_table(
-      ?TBL_COLUMNS,
+      ?TBL_NAME,
       [{Mode, Nodes},
        {type, set},
-       {record_name, sv_column},
-       {attributes, record_info(fields, sv_column)},
+       {record_name, sv_metric_group},
+       {attributes, record_info(fields, sv_metric_group)},
        {user_properties,
-        [{id,           pos_integer, primary},
+        [
+         {id,           pos_integer, primary},
          {schema_name,  atom,        false  },
          {name,         atom,        false  },
-         {type,         atom,        false  },
-         {constraint,   list,        false  },
          {created_at,   pos_integer, false  }
         ]}
       ]).
@@ -61,7 +61,7 @@ create_table(Mode, Nodes) ->
 %% @doc Retrieve all records
 %%
 -spec(all() ->
-             {ok, [#sv_column{}]} | not_found | {error, any()}).
+             {ok, [#sv_metric_group{}]} | not_found | {error, any()}).
 all() ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -78,17 +78,17 @@ all() ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(get(sv_schema(), sv_key()) ->
-             {ok, #sv_column{}} | not_found | {error, any()}).
-get(Schema, ColumnName) ->
+-spec(get(sv_schema(), sv_metric_grp()) ->
+             {ok, #sv_metric_group{}} | not_found | {error, any()}).
+get(SchemaName, MetricGroupName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#sv_column.schema_name == Schema,
-                                        X#sv_column.name == ColumnName]),
+                                        (X#sv_metric_group.schema_name == SchemaName andalso
+                                         X#sv_metric_group.name == MetricGroupName)]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -103,7 +103,7 @@ get(Schema, ColumnName) ->
 %% @doc Retrieve a schema by name
 %%
 -spec(find_by_schema_name(sv_schema()) ->
-             {ok, #sv_column{}} | not_found | {error, any()}).
+             {ok, #sv_metric_group{}} | not_found | {error, any()}).
 find_by_schema_name(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -111,7 +111,7 @@ find_by_schema_name(SchemaName) ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                         X#sv_column.schema_name == SchemaName]),
+                                         X#sv_metric_group.schema_name == SchemaName]),
                         Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
@@ -126,21 +126,21 @@ find_by_schema_name(SchemaName) ->
 
 %% @doc Modify a schema
 %%
--spec(update(#sv_column{}) ->
+-spec(update(#sv_metric_group{}) ->
              ok | {error, any()}).
-update(#sv_column{schema_name = Schema,
-                  name = ColName} = Col) ->
+update(#sv_metric_group{schema_name = Schema,
+                        name = MetricGroupName} = MetricGroup) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Ret = case get(Schema, ColName) of
-                      {ok, #sv_column{id = Id}} ->
-                          {ok, Col#sv_column{id = Id,
-                                             created_at = leo_date:now()}};
+            Ret = case get(Schema, MetricGroupName) of
+                      {ok, #sv_metric_group{id = Id}} ->
+                          {ok, MetricGroup#sv_metric_group{id = Id,
+                                                           created_at = leo_date:now()}};
                       not_found ->
-                          {ok, Col#sv_column{id = ?MODULE:size() + 1,
-                                             created_at = leo_date:now()}};
+                          {ok, MetricGroup#sv_metric_group{id = ?MODULE:size() + 1,
+                                                           created_at = leo_date:now()}};
                       {error, Cause} ->
                           {error, Cause}
                   end,
@@ -148,22 +148,22 @@ update(#sv_column{schema_name = Schema,
     end.
 
 %% @private
-update_1({ok, Col}) ->
-    F = fun()-> mnesia:write(?TBL_NAME, Col, write) end,
+update_1({ok, MetricGroup}) ->
+    F = fun()-> mnesia:write(?TBL_NAME, MetricGroup, write) end,
     leo_mnesia:write(F);
 update_1({error, Cause}) ->
     {error, Cause}.
 
 
-%% @doc Remove system-configuration
+%% @doc Remove a schema
 %%
--spec(delete(sv_schema(), sv_key()) ->
+-spec(delete(sv_schema(), sv_metric_grp()) ->
              ok | {error, any()}).
-delete(Schema, ColName) ->
-    case ?MODULE:get(Schema, ColName) of
-        {ok, Col} ->
+delete(SchemaName, MetricGroupName) ->
+    case ?MODULE:get(SchemaName, MetricGroupName) of
+        {ok, MetricGroup} ->
             Fun = fun() ->
-                          mnesia:delete_object(?TBL_NAME, Col, write)
+                          mnesia:delete_object(?TBL_NAME, MetricGroup, write)
                   end,
             leo_mnesia:delete(Fun);
         Error ->
@@ -174,7 +174,7 @@ delete(Schema, ColName) ->
 %% @doc Retrieve the checksum of this table
 %%
 -spec(checksum(sv_schema()) ->
-             integer() | {error, any()}).
+             integer()).
 checksum(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -182,7 +182,7 @@ checksum(SchemaName) ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                         X#sv_column.schema_name == SchemaName]),
+                                         X#sv_metric_group.schema_name == SchemaName]),
                         Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
