@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,16 +19,17 @@
 %% under the License.
 %%
 %%======================================================================
--module(savannadb_commons).
+-module(savanna_commons).
 -author('Yosuke Hara').
 
 -export([new/4, new/5, new/6, new/7, new/8,
+         stop/2,
          create_schema/2,
          create_metrics_by_schema/3,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -38,38 +39,51 @@
 %% @doc Create a new metrics or histgram
 %%
 new(?METRIC_COUNTER, Schema, Key, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_metrics_counter:start_link(Name, Callback).
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_counter:start_link(Name, Callback).
 
 new(?METRIC_COUNTER, Schema, Key, Window, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_metrics_counter:start_link(Name, Window, Callback);
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_counter:start_link(Name, Window, Callback);
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Callback).
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_histogram:start_link(Name, HistogramType, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, Callback).
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_histogram:start_link(Name, HistogramType, Window, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Callback).
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, Schema, Key, Window, SampleSize, Alpha, Callback) ->
-    Name = ?svdb_metric_name(Schema, Key),
-    svdbc_sample_slide:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
+    Name = ?sv_metric_name(Schema, Key),
+    svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
+
+
+%% @doc Stop a process
+stop(Schema, Key) ->
+    Name = ?sv_metric_name(Schema, Key),
+    case check_type(Name) of
+        ?METRIC_COUNTER ->
+            svc_metrics_counter:stop(Name);
+        ?METRIC_HISTOGRAM ->
+            svc_metrics_histogram:stop(Name);
+        _ ->
+            ok
+    end.
 
 
 %% doc Create a new metrics or histgram from the schema
 %%
--spec(create_schema(svdb_schema(), [#svdb_column{}]) ->
+-spec(create_schema(sv_schema(), [#sv_column{}]) ->
              ok | {error, any()}).
 create_schema(SchemaName, Columns) ->
     CreatedAt = leo_date:now(),
-    case svdbc_tbl_schema:update(#svdb_schema{name = SchemaName,
-                                              created_at = CreatedAt}) of
+    case svc_tbl_schema:update(#sv_schema{name = SchemaName,
+                                          created_at = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Columns, CreatedAt);
         Error ->
@@ -79,11 +93,11 @@ create_schema(SchemaName, Columns) ->
 %% @private
 create_schema_1(_,[],_) ->
     ok;
-create_schema_1(SchemaName, [#svdb_column{} = Col|Rest], CreatedAt) ->
-    Id = svdbc_tbl_column:size() + 1,
-    case svdbc_tbl_column:update(Col#svdb_column{id = Id,
-                                                 schema_name = SchemaName,
-                                                 created_at  = CreatedAt}) of
+create_schema_1(SchemaName, [#sv_column{} = Col|Rest], CreatedAt) ->
+    Id = svc_tbl_column:size() + 1,
+    case svc_tbl_column:update(Col#sv_column{id = Id,
+                                             schema_name = SchemaName,
+                                             created_at  = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Rest, CreatedAt);
         Error ->
@@ -95,12 +109,12 @@ create_schema_1(_,_,_) ->
 
 %% doc Create a new metrics or histgram by the schema
 %%
--spec(create_metrics_by_schema(svdb_schema(), pos_integer(), function()) ->
+-spec(create_metrics_by_schema(sv_schema(), pos_integer(), function()) ->
              ok | {error, any()}).
 create_metrics_by_schema(SchemaName, Window, Callback) ->
-    case svdbc_tbl_schema:get(SchemaName) of
+    case svc_tbl_schema:get(SchemaName) of
         {ok,_} ->
-            case svdbc_tbl_column:find_by_schema_name(SchemaName) of
+            case svc_tbl_column:find_by_schema_name(SchemaName) of
                 {ok, Columns} ->
                     create_metrics_by_schema_1(Columns, Window, Callback);
                 Error ->
@@ -113,15 +127,15 @@ create_metrics_by_schema(SchemaName, Window, Callback) ->
 %% @private
 create_metrics_by_schema_1([],_,_) ->
     ok;
-create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_COUNTER,
-                                         schema_name = Schema,
-                                         name = Key}|Rest], Window, Callback) ->
+create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_COUNTER,
+                                       schema_name = Schema,
+                                       name = Key}|Rest], Window, Callback) ->
     {ok,_Pid} = new(?METRIC_COUNTER, Schema, Key, Window, Callback),
     create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_UNIFORM,
-                                         schema_name = Schema,
-                                         constraint  = Constraint,
-                                         name = Key}|Rest], Window, Callback) ->
+create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_UNIFORM,
+                                       schema_name = Schema,
+                                       constraint  = Constraint,
+                                       name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_UNIFORM,
     {ok,_Pid} =
         case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
@@ -129,26 +143,15 @@ create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_UNIFORM,
             N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
         end,
     create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE,
-                                         schema_name = Schema,
-                                         name = Key}|Rest], Window, Callback) ->
+create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_SLIDE,
+                                       schema_name = Schema,
+                                       name = Key}|Rest], Window, Callback) ->
     {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
     create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_SLIDE_UNIFORM,
-                                         schema_name = Schema,
-                                         constraint  = Constraint,
-                                         name = Key}|Rest], Window, Callback) ->
-    HType = ?HISTOGRAM_SLIDE_UNIFORM,
-    {ok,_Pid} =
-        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
-            N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
-        end,
-    create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#svdb_column{type = ?COL_TYPE_H_EXDEC,
-                                         schema_name = Schema,
-                                         constraint  = Constraint,
-                                         name = Key}|Rest], Window, Callback) ->
+create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_EXDEC,
+                                       schema_name = Schema,
+                                       constraint  = Constraint,
+                                       name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_EXDEC,
     {ok,_Pid} =
         case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
@@ -168,34 +171,34 @@ create_metrics_by_schema_1(_,_,_) ->
 
 %% @doc Notify an event with a schema and a key
 %%
--spec(notify(svdb_schema(), svdb_keyval()) ->
+-spec(notify(sv_schema(), sv_keyval()) ->
              ok | {error, any()}).
 notify(Schema, {Key, Event}) ->
-    Name = ?svdb_metric_name(Schema, Key),
+    Name = ?sv_metric_name(Schema, Key),
     notify(check_type(Name), Name, Event).
 
 %% @private
 notify(?METRIC_COUNTER, Name, Event) ->
-    folsom_metrics:notify({Name, Event});
+    folsom_metrics:notify({Name, {inc, Event}});
 notify(?METRIC_HISTOGRAM, Name, Event) ->
-    svdbc_sample_slide:update(Name, Event);
+    svc_metrics_histogram:update(Name, Event);
 notify(_,_,_) ->
     {error, invalid_args}.
 
 
 %% @doc Retrieve a metric value
 %%
--spec(get_metric_value(svdb_schema(), atom()) ->
+-spec(get_metric_value(sv_schema(), atom()) ->
              {ok, any()} | {error, any()}).
 get_metric_value(Schema, Key) ->
-    Name = ?svdb_metric_name(Schema, Key),
+    Name = ?sv_metric_name(Schema, Key),
     get_metric_value_1(check_type(Name), Name).
 
 %% @private
 get_metric_value_1(?METRIC_COUNTER, Name) ->
-    svdbc_metrics_counter:get_values(Name);
+    svc_metrics_counter:get_values(Name);
 get_metric_value_1(?METRIC_HISTOGRAM, Name) ->
-    svdbc_sample_slide:get_values(Name);
+    svc_metrics_histogram:get_values(Name);
 get_metric_value_1(_,_) ->
     {error, invalid_args}.
 
@@ -203,10 +206,10 @@ get_metric_value_1(_,_) ->
 %% @doc Retrieve a historgram statistics
 %%
 get_histogram_statistics(Schema, Key) ->
-    Name = ?svdb_metric_name(Schema, Key),
+    Name = ?sv_metric_name(Schema, Key),
     case check_type(Name) of
         ?METRIC_HISTOGRAM ->
-            svdbc_sample_slide:get_histogram_statistics(Name);
+            svc_metrics_histogram:get_histogram_statistics(Name);
         _ ->
             not_found
     end.
@@ -223,8 +226,8 @@ check_type(Name) ->
 check_type([],_Name) ->
     not_found;
 check_type([?METRIC_COUNTER = Type|Rest], Name) ->
-    case ets:lookup(?SPIRAL_TABLE, Name) of
-        [{Name,{spiral,_,_}}|_] ->
+    case ets:lookup(?COUNTER_TABLE, {Name, 0}) of
+        [{{Name, 0},0}|_] ->
             Type;
         _ ->
             check_type(Rest, Name)

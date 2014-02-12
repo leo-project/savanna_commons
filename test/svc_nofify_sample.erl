@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,12 +19,23 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_notify_behaviour).
+-module(svc_nofify_sample).
 -author('Yosuke Hara').
 
--include("savannadb_commons.hrl").
+-behaviour(svc_notify_behaviour).
 
-%% @doc Notify metric(s) and statistics to a callback-mod
-%%
--callback(notify(Schema::svdb_schema(), {Key::svdb_key(), Values::svdb_values()}) ->
-                 ok | {error, any()}).
+-include_lib("eunit/include/eunit.hrl").
+-export([notify/2]).
+
+notify(Schema, {Key, Values}) ->
+    case Schema of
+        'test_counter' ->
+            ?debugVal({Schema, {Key, Values}});
+        'test_histogram_1' ->
+            ?debugVal({Schema, {Key, Values}});
+        'test_histogram_2' ->
+            ?debugVal({Schema, {Key, Values}});
+        _ ->
+            void
+    end,
+    ok.

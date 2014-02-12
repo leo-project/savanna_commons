@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,12 +19,12 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_metrics_counter).
+-module(svc_metrics_counter).
 -author('Yosuke Hara').
 
 -behaviour(gen_server).
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -33,7 +33,6 @@
          stop/1]).
 
 -export([get_values/1,
-         update/2,
          trim/3
         ]).
 
@@ -45,14 +44,15 @@
          code_change/3]).
 
 -record(state, {name :: atom(),
-                window = 0 :: pos_integer(),
-                reservoir  :: pos_integer(),
-                before = 0 :: pos_integer(),
-                callback   :: atom() %% see:'svdbc_notify_behaviour'
+                window = 0  :: pos_integer(),
+                server      :: pid(),
+                callback    :: atom() %% see:'svc_notify_behaviour'
                }).
 
--define(DEF_WINDOW, 60).
+-define(DEF_WINDOW, 10).
 -define(DEF_WIDTH,  16).
+-define(DEF_TIMEOUT, 30000).
+
 
 %%--------------------------------------------------------------------
 %% API
@@ -73,21 +73,14 @@ stop(Name) ->
 -spec(get_values(atom()) ->
              {ok, tuple()} | {error, any()}).
 get_values(Name) ->
-    gen_server:call(Name, get_values).
-
-
-%% @doc
--spec(update(atom(), any()) ->
-             ok | {error, any()}).
-update(Name, Value) ->
-    gen_server:call(Name, {update, Value}).
+    gen_server:call(Name, get_values, ?DEF_TIMEOUT).
 
 
 %% @doc
 -spec(trim(atom(), atom(), pos_integer()) ->
              ok | {error, any()}).
 trim(Name, Tid, Window) ->
-    gen_server:call(Name, {trim, Tid, Window}).
+    gen_server:call(Name, {trim, Tid, Window}, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -99,63 +92,40 @@ trim(Name, Tid, Window) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 init([Name, Window, Callback]) ->
-    Spiral = #spiral{},
-    Reservoir = Spiral#spiral.tid,
-    Pid = svdbc_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
-    ok = folsom_ets:add_handler(spiral, Name),
+    Pid = savanna_commons_sup:start_slide_server(?MODULE, Name, -1, Window),
+    ok = folsom_ets:add_handler(counter, Name),
+    {ok, #state{name = Name,
+                window = Window,
+                server = Pid,
+                callback  = Callback}}.
 
-    case ets:insert_new(Spiral#spiral.tid,
-                        [{{count, N}, 0} || N <- lists:seq(0, ?DEF_WIDTH - 1)]) of
-        true ->
-            case ets:insert(?SPIRAL_TABLE, {Name, Spiral#spiral{server = Pid}}) of
-                true ->
-                    {ok, #state{name = Name,
-                                window = Window,
-                                reservoir = Reservoir,
-                                callback  = Callback}};
-                _ ->
-                    {stop, ?ERROR_ETS_NOT_AVAILABLE}
-            end;
-        _ ->
-            {stop, ?ERROR_ETS_NOT_AVAILABLE}
-    end.
-
-handle_call(stop, _From, State) ->
+handle_call(stop, _From, #state{server = _Pid} = State) ->
+    ok = svc_sample_slide_server:stop(_Pid),
     {stop, shutdown, ok, State};
 
 
-handle_call(get_values, _From, #state{window = Window,
-                                      reservoir = Tid} = State) ->
-    Reply = get_values_1(Tid, Window),
-    {reply, Reply, State};
+handle_call(get_values, _From, #state{name = Name} = State) ->
+    %% Reply = get_values_1(Tid, Window),
+    Count = folsom_metrics_counter:get_value(Name),
+    {reply, {ok, Count}, State};
 
-handle_call({update, Value}, _From, #state{reservoir = Tid} = State) ->
-    Moment = folsom_utils:now_epoch(),
-    X = erlang:system_info(scheduler_id),
-    Rnd = X band (?DEF_WIDTH - 1),
-    _ = folsom_utils:update_counter(Tid, {Moment, Rnd}, Value),
-    Reply = ets:update_counter(Tid, {count, Rnd}, Value),
-    {reply, Reply, State};
-
-handle_call({trim, Tid, Window}, _From, #state{name = Name,
-                                               callback = Callback} = State) ->
+handle_call({trim,_Tid, Window}, _From, #state{name = Name,
+                                               callback = Callback,
+                                               window = Window} = State) ->
     %% Retrieve the current value, then execute the callback-function
-    {ok, Current} = get_values_1(Tid, Window),
+    Count = folsom_metrics_counter:get_value(Name),
+
     case is_atom(Callback) of
         true ->
-            {SchemaName, Key} = ?svdb_schema_and_key(Name),
-            catch Callback:notify(SchemaName, {Key, Current});
+            {SchemaName, Key} = ?sv_schema_and_key(Name),
+            catch Callback:notify(SchemaName, {Key, Count});
         false ->
             void
     end,
 
-    %% Remove oldest data
-    Oldest = folsom_utils:now_epoch() - Window,
-    _ = ets:select_delete(Tid, [{{{'$1','_'},'_'},
-                                 [{is_integer, '$1'},
-                                  {'<', '$1', Oldest}],
-                                 ['true']}]),
-    {reply, ok, State#state{before = Oldest}}.
+    %% Clear oldest data
+    folsom_metrics_counter:clear(Name),
+    {reply, ok, State}.
 
 
 handle_cast(_Msg, State) ->
@@ -190,13 +160,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-
-%% @private
-get_values_1(Tid, Window) ->
-    Oldest = folsom_utils:now_epoch() - Window,
-    Count = lists:sum(ets:select(Tid, [{{{count,'_'},'$1'},[],['$1']}])),
-    One   = lists:sum(ets:select(Tid, [{{{'$1','_'},'$2'},
-                                        [{is_integer, '$1'},
-                                         {'>=', '$1', Oldest}],
-                                        ['$2']}])),
-    {ok, [{count, Count}, {one, One}]}.

@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_sup).
+-module(savanna_commons_sup).
 
 -behaviour(supervisor).
 
@@ -49,6 +49,6 @@ start_slide_server(SampleMod, ServerId, Reservoir, Window) ->
 init([]) ->
     {ok,{{simple_one_for_one, 3, 180},
          [
-          {undefined, {svdbc_sample_slide_server, start_link, []},
-           transient, brutal_kill, worker, [svdbc_sample_slide_server]}
+          {undefined, {svc_sample_slide_server, start_link, []},
+           transient, brutal_kill, worker, [svc_sample_slide_server]}
          ]}}.
