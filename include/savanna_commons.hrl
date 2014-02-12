@@ -28,7 +28,7 @@
 -type(sv_values() :: list(tuple())).
 
 -define(ERROR_ETS_NOT_AVAILABLE, "ETS is not available").
--define(ERROR_MNESIA_NOT_START,  "Mneisa is not available").
+-define(ERROR_MNESIA_NOT_START,  "Mnesia is not available").
 
 -define(METRIC_COUNTER,   'counter').
 -define(METRIC_HISTOGRAM, 'histogram').
