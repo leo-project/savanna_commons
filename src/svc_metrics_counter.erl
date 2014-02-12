@@ -46,7 +46,6 @@
 -record(state, {name :: atom(),
                 window = 0  :: pos_integer(),
                 server      :: pid(),
-                before = 0  :: pos_integer(),
                 callback    :: atom() %% see:'svc_notify_behaviour'
                }).
 
@@ -114,7 +113,6 @@ handle_call({trim,_Tid, Window}, _From, #state{name = Name,
                                                callback = Callback,
                                                window = Window} = State) ->
     %% Retrieve the current value, then execute the callback-function
-    ThisTime = folsom_utils:now_epoch(),
     Count = folsom_metrics_counter:get_value(Name),
 
     case is_atom(Callback) of
@@ -126,8 +124,8 @@ handle_call({trim,_Tid, Window}, _From, #state{name = Name,
     end,
 
     %% Clear oldest data
-    folsom_metrics_counter:dec(Name, Count),
-    {reply, ok, State#state{before = ThisTime}}.
+    folsom_metrics_counter:clear(Name),
+    {reply, ok, State}.
 
 
 handle_cast(_Msg, State) ->

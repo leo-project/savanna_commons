@@ -49,8 +49,10 @@ suite_test_() ->
        {timeout, 30, fun create_metrics_by_shcema/0}},
       {"test counter metrics for 60sec",
        {timeout, 120, fun counter_metrics_2/0}},
-      {"test counter metrics for 60sec",
-       {timeout, 180, fun histogram_2/0}}
+      {"test counter metrics for 60sec#1",
+       {timeout, 40, fun histogram_2/0}},
+      {"test counter metrics for 60sec#2",
+       {timeout, 140, fun histogram_3/0}}
      ]}.
 
 counter_metrics_1() ->
@@ -121,16 +123,13 @@ create_schema() ->
                         #sv_column{name = 'col_4',
                                    type = ?COL_TYPE_H_EXDEC,
                                    constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000},
-                                                 {?HISTOGRAM_CONS_ALPHA,  0.018}]},
-                        #sv_column{name = 'col_5',
-                                   type = ?COL_TYPE_H_SLIDE_UNIFORM,
-                                   constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]}
+                                                 {?HISTOGRAM_CONS_ALPHA,  0.018}]}
                        ]),
 
     {ok, Columns_1} = svc_tbl_column:all(),
     {ok, Columns_2} = svc_tbl_column:find_by_schema_name(SchemaName),
     ?assertEqual(true, Columns_1 == Columns_2),
-    ?assertEqual(5, svc_tbl_column:size()),
+    ?assertEqual(4, svc_tbl_column:size()),
     ok.
 
 create_metrics_by_shcema() ->
@@ -188,23 +187,10 @@ create_metrics_by_shcema() ->
     savanna_commons:notify(Schema, {Key_4, Event_8}),
     savanna_commons:notify(Schema, {Key_4, Event_9}),
 
-    Key_5 = 'col_5',
-    savanna_commons:notify(Schema, {Key_5, Event_0}),
-    savanna_commons:notify(Schema, {Key_5, Event_1}),
-    savanna_commons:notify(Schema, {Key_5, Event_2}),
-    savanna_commons:notify(Schema, {Key_5, Event_3}),
-    savanna_commons:notify(Schema, {Key_5, Event_4}),
-    savanna_commons:notify(Schema, {Key_5, Event_5}),
-    savanna_commons:notify(Schema, {Key_5, Event_6}),
-    savanna_commons:notify(Schema, {Key_5, Event_7}),
-    savanna_commons:notify(Schema, {Key_5, Event_8}),
-    savanna_commons:notify(Schema, {Key_5, Event_9}),
-
     {ok, Ret_1} = savanna_commons:get_metric_value(Schema, Key_1),
     {ok, Ret_2} = savanna_commons:get_histogram_statistics(Schema, Key_2),
     {ok, Ret_3} = savanna_commons:get_histogram_statistics(Schema, Key_3),
     {ok, Ret_4} = savanna_commons:get_histogram_statistics(Schema, Key_4),
-    {ok, Ret_5} = savanna_commons:get_histogram_statistics(Schema, Key_5),
 
     ?assertEqual(1280, Ret_1),
     ?assertEqual(16,   leo_misc:get_value('min',    Ret_2)),
@@ -213,12 +199,11 @@ create_metrics_by_shcema() ->
     ?assertEqual(8,    leo_misc:get_value('n',      Ret_2)),
     ?assertEqual(true, [] /= Ret_3),
     ?assertEqual(true, [] /= Ret_4),
-    ?assertEqual(true, [] /= Ret_5),
 
     timer:sleep(Window * 1100),
     ok.
 
-%%
+%% TEST metric counter
 counter_metrics_2() ->
     Schema = 'test_counter',
     Key = 'col_1',
@@ -242,9 +227,9 @@ inspect_1(Schema, Key, _, EndTime) ->
     inspect_1(Schema, Key, leo_date:now(), EndTime).
 
 
-%%
+%% TEST metric histogram - (slide)
 histogram_2() ->
-    Schema = 'test_histogram',
+    Schema = 'test_histogram_1',
     Key = 'h1',
     Window = 10,
     SampleSize = 3000,
@@ -252,8 +237,25 @@ histogram_2() ->
                         ?HISTOGRAM_SLIDE,
                         Schema, Key, Window, SampleSize, 'svc_nofify_sample'),
     StartTime = leo_date:now(),
-    EndTime   = StartTime + 120,
+    EndTime   = StartTime + 30,
     inspect_2(Schema, Key, StartTime, EndTime),
+    ?debugVal("### DONE - histogram_2/0 ###"),
+    ok.
+
+
+%% TEST metric histogram - (uniform)
+histogram_3() ->
+    Schema = 'test_histogram_2',
+    Key = 'h1',
+    Window = 30,
+    SampleSize = 3000,
+    savanna_commons:new(?METRIC_HISTOGRAM,
+                        ?HISTOGRAM_UNIFORM,
+                        Schema, Key, Window, SampleSize, 'svc_nofify_sample'),
+    StartTime = leo_date:now(),
+    EndTime   = StartTime + 130,
+    inspect_2(Schema, Key, StartTime, EndTime),
+    ?debugVal("### DONE - histogram_3/0 ###"),
     ok.
 
 

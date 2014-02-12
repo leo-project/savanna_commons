@@ -148,17 +148,6 @@ create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_SLIDE,
                                        name = Key}|Rest], Window, Callback) ->
     {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
     create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_SLIDE_UNIFORM,
-                                       schema_name = Schema,
-                                       constraint  = Constraint,
-                                       name = Key}|Rest], Window, Callback) ->
-    HType = ?HISTOGRAM_SLIDE_UNIFORM,
-    {ok,_Pid} =
-        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
-            N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
-        end,
-    create_metrics_by_schema_1(Rest, Window, Callback);
 create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_EXDEC,
                                        schema_name = Schema,
                                        constraint  = Constraint,

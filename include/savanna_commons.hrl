@@ -28,7 +28,7 @@
 -type(sv_values() :: list(tuple())).
 
 -define(ERROR_ETS_NOT_AVAILABLE, "ETS is not available").
--define(ERROR_MNESIA_NOT_START,  "").
+-define(ERROR_MNESIA_NOT_START,  "Mneisa is not available").
 
 -define(METRIC_COUNTER,   'counter').
 -define(METRIC_HISTOGRAM, 'histogram').
@@ -38,11 +38,9 @@
 -define(HISTOGRAM_UNIFORM,       'uniform').
 -define(HISTOGRAM_EXDEC,         'exdec').
 -define(HISTOGRAM_SLIDE,         'slide').
--define(HISTOGRAM_SLIDE_UNIFORM, 'slide_uniform').
 -type(sv_histogram_type() :: ?HISTOGRAM_UNIFORM |
                              ?HISTOGRAM_EXDEC |
-                             ?HISTOGRAM_SLIDE |
-                             ?HISTOGRAM_SLIDE_UNIFORM).
+                             ?HISTOGRAM_SLIDE).
 
 -define(HISTOGRAM_CONS_SAMPLE, 'sample').
 -define(HISTOGRAM_CONS_ALPHA,  'alpha').
@@ -55,13 +53,11 @@
 -define(COL_TYPE_COUNTER,         'counter').
 -define(COL_TYPE_H_UNIFORM,       'histogram_uniform').
 -define(COL_TYPE_H_SLIDE,         'histogram_slide').
--define(COL_TYPE_H_SLIDE_UNIFORM, 'histogram_slide_uniform').
 -define(COL_TYPE_H_EXDEC,         'histogram_exdec').
 -define(COL_TYPE_HISTORY,         'history').
 -type(sv_column_type() :: ?COL_TYPE_COUNTER |
                           ?COL_TYPE_H_UNIFORM |
                           ?COL_TYPE_H_SLIDE |
-                          ?COL_TYPE_H_SLIDE_UNIFORM |
                           ?COL_TYPE_H_EXDEC |
                           ?COL_TYPE_HISTORY).
 

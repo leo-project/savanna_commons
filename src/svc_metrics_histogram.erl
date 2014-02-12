@@ -79,11 +79,6 @@ start_link(Name, HistogramType, Window, Callback) ->
 
 -spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, ?HISTOGRAM_SLIDE_UNIFORM = HistogramType, Window, SampleSize, Callback) ->
-    gen_server:start_link({local, Name}, ?MODULE,
-                          [Name, HistogramType, Window,
-                           {Window, SampleSize}, ?DEFAULT_ALPHA, Callback], []);
-
 start_link(Name, HistogramType, Window, SampleSize, Callback) ->
     start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
 
@@ -151,15 +146,6 @@ init([Name, ?HISTOGRAM_SLIDE = SampleType, Window,_SampleSize,_Alpha, Callback])
                           callback  = Callback
                          });
 
-init([Name, ?HISTOGRAM_SLIDE_UNIFORM = SampleType, Window, SampleSize,_Alpha, Callback]) ->
-    Sample = #slide_uniform{window = Window, size = SampleSize},
-    Reservoir = Sample#slide_uniform.reservoir,
-    init_1(Sample, #state{name = Name,
-                          sample_type = SampleType,
-                          window = Window,
-                          reservoir = Reservoir,
-                          callback  = Callback
-                         });
 init([Name, ?HISTOGRAM_UNIFORM = SampleType, Window, SampleSize,_Alpha, Callback]) ->
     Sample = #uniform{size = SampleSize},
     Reservoir = Sample#uniform.reservoir,
@@ -197,20 +183,19 @@ init_1(Sample, #state{name = Name,
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
 
-handle_call(get_values, _From, #state{name = Name,
-                                      sample_type = SampleType} = State) ->
+handle_call(get_values, _From, #state{name = Name} = State) ->
     Hist = get_value(Name),
-    Reply = get_values_1(SampleType, Hist#histogram.sample),
+    Reply = get_values_1(Hist#histogram.type, Hist#histogram.sample),
     {reply, Reply, State};
 
-handle_call(get_histogram_statistics, _From, #state{name = Name,
-                                                    sample_type = SampleType} = State) ->
-    CurrentStat = get_current_statistics(Name, SampleType),
+handle_call(get_histogram_statistics, _From, #state{name = Name} = State) ->
+    CurrentStat = get_current_statistics(Name),
     {reply, {ok, CurrentStat}, State};
 
 handle_call({update, Value}, _From, #state{name = Name} = State) ->
     Hist = get_value(Name),
     Sample = Hist#histogram.sample,
+
     case update_1(Hist#histogram.type, Hist#histogram.sample, Value) of
         Sample ->
             void;
@@ -231,14 +216,22 @@ handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
     case is_atom(Callback) of
         true ->
             {SchemaName, Key} = ?sv_schema_and_key(Name),
-            CurrentStat = get_current_statistics(Name, SampleType),
+            CurrentStat = get_current_statistics(Name),
             catch Callback:notify(SchemaName, {Key, CurrentStat});
         false ->
             void
     end,
 
     %% Remove oldest data
-    trim_1(SampleType, Reservoir, Window),
+    try
+        trim_1(SampleType, Name, Reservoir, Window)
+    catch
+        _:Cause ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "handle_call/3"},
+                                    {line, ?LINE}, {body, Cause}])
+    end,
     {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
@@ -267,8 +260,6 @@ get_value(Name) ->
 %% @private
 get_values_1(?HISTOGRAM_SLIDE, Sample) ->
     folsom_sample_slide:get_values(Sample);
-get_values_1(?HISTOGRAM_SLIDE_UNIFORM, Sample) ->
-    folsom_sample_slide_uniform:get_values(Sample);
 get_values_1(?HISTOGRAM_UNIFORM, Sample) ->
     folsom_sample_uniform:get_values(Sample);
 get_values_1(?HISTOGRAM_EXDEC, Sample) ->
@@ -277,9 +268,10 @@ get_values_1(?HISTOGRAM_EXDEC, Sample) ->
 
 %% @doc Retrieve the current statistics
 %% @private
-get_current_statistics(Name, SampleType) ->
+get_current_statistics(Name) ->
     Hist = get_value(Name),
-    Values = get_values_1(SampleType, Hist#histogram.sample),
+    Values = get_values_1(Hist#histogram.type, Hist#histogram.sample),
+    ?debugVal({Name, length(Values)}),
     bear:get_statistics(Values).
 
 
@@ -287,8 +279,6 @@ get_current_statistics(Name, SampleType) ->
 %% @private
 update_1(?HISTOGRAM_SLIDE, Sample, Value) ->
     folsom_sample_slide:update(Sample, Value);
-update_1(?HISTOGRAM_SLIDE_UNIFORM, Sample, Value) ->
-    folsom_sample_slide_uniform:update(Sample, Value);
 update_1(?HISTOGRAM_UNIFORM, Sample, Value) ->
     folsom_sample_uniform:update(Sample, Value);
 update_1(?HISTOGRAM_EXDEC, Sample, Value) ->
@@ -296,11 +286,17 @@ update_1(?HISTOGRAM_EXDEC, Sample, Value) ->
 
 %% @doc Remove oldest values
 %% @private
-trim_1(?HISTOGRAM_SLIDE, Reservoir, Window) ->
+trim_1(?HISTOGRAM_SLIDE,_Name, Reservoir, Window) ->
     folsom_sample_slide:trim(Reservoir, Window);
-trim_1(?HISTOGRAM_SLIDE_UNIFORM, Reservoir, Window) ->
-    folsom_sample_slide_uniform:trim(Reservoir, Window);
-trim_1(?HISTOGRAM_UNIFORM,_,_) ->
+trim_1(?HISTOGRAM_UNIFORM, Name, Reservoir,_Window) ->
+    Hist = get_value(Name),
+    Sample = Hist#histogram.sample,
+    true = ets:insert(?HISTOGRAM_TABLE,
+                      {Name, Hist#histogram{
+                               sample = Sample#uniform{
+                                          n = 1,
+                                          seed = os:timestamp()}}}),
+    ets:delete_all_objects(Reservoir),
     ok;
-trim_1(?HISTOGRAM_EXDEC,_,_) ->
+trim_1(?HISTOGRAM_EXDEC,_,_,_) ->
     ok.
