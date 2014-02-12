@@ -271,7 +271,6 @@ get_values_1(?HISTOGRAM_EXDEC, Sample) ->
 get_current_statistics(Name) ->
     Hist = get_value(Name),
     Values = get_values_1(Hist#histogram.type, Hist#histogram.sample),
-    ?debugVal({Name, length(Values)}),
     bear:get_statistics(Values).
 
 
