@@ -26,6 +26,7 @@
          stop/2,
          create_schema/2,
          create_metrics_by_schema/3,
+         create_metrics_by_schema/4,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
@@ -112,11 +113,24 @@ create_schema_1(_,_,_) ->
 -spec(create_metrics_by_schema(sv_schema(), pos_integer(), function()) ->
              ok | {error, any()}).
 create_metrics_by_schema(SchemaName, Window, Callback) ->
+    create_metrics_by_schema(SchemaName, SchemaName, Window, Callback).
+
+-spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
+                               pos_integer(), function()) ->
+             ok | {error, any()}).
+create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
     case svc_tbl_schema:get(SchemaName) of
         {ok,_} ->
-            case svc_tbl_column:find_by_schema_name(SchemaName) of
-                {ok, Columns} ->
-                    create_metrics_by_schema_1(Columns, Window, Callback);
+            case svc_tbl_metric_group:update(#sv_metric_group{schema_name = SchemaName,
+                                                              name = MetricGroupName}) of
+                ok ->
+                    case svc_tbl_column:find_by_schema_name(SchemaName) of
+                        {ok, Columns} ->
+                            create_metrics_by_schema_1(
+                              MetricGroupName, Columns, Window, Callback);
+                        Error ->
+                            Error
+                    end;
                 Error ->
                     Error
             end;
@@ -125,47 +139,42 @@ create_metrics_by_schema(SchemaName, Window, Callback) ->
     end.
 
 %% @private
-create_metrics_by_schema_1([],_,_) ->
+create_metrics_by_schema_1(_,[],_,_) ->
     ok;
-create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_COUNTER,
-                                       schema_name = Schema,
-                                       name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_COUNTER, Schema, Key, Window, Callback),
-    create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_UNIFORM,
-                                       schema_name = Schema,
-                                       constraint  = Constraint,
-                                       name = Key}|Rest], Window, Callback) ->
+create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_COUNTER,
+                                                        name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_COUNTER, MetricGroupName, Key, Window, Callback),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+
+create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_UNIFORM,
+                                                        constraint  = Constraint,
+                                                        name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_UNIFORM,
     {ok,_Pid} =
         case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
-            N  -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N, Callback)
+            [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
+            N  -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N, Callback)
         end,
-    create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_SLIDE,
-                                       schema_name = Schema,
-                                       name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, Callback),
-    create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1([#sv_column{type = ?COL_TYPE_H_EXDEC,
-                                       schema_name = Schema,
-                                       constraint  = Constraint,
-                                       name = Key}|Rest], Window, Callback) ->
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_SLIDE,
+                                                        name = Key}|Rest], Window, Callback) ->
+    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, MetricGroupName, Key, Window, Callback),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_EXDEC,
+                                                        constraint  = Constraint,
+                                                        name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_EXDEC,
     {ok,_Pid} =
         case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, Callback);
+            [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
             N1 ->
                 case leo_misc:get_value(?HISTOGRAM_CONS_ALPHA, Constraint, []) of
-                    [] -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N1, Callback);
-                    N2 -> new(?METRIC_HISTOGRAM, HType, Schema, Key, Window, N1, N2, Callback)
+                    [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, Callback);
+                    N2 -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, N2, Callback)
                 end
         end,
-
-    %% {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_EXDEC, Schema, Key, Window, Callback),
-    create_metrics_by_schema_1(Rest, Window, Callback);
-create_metrics_by_schema_1(_,_,_) ->
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+create_metrics_by_schema_1(_,_,_,_) ->
     {error, invalid_args}.
 
 

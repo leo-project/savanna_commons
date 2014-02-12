@@ -108,6 +108,7 @@ create_schema() ->
     SchemaName = 'test_1',
     {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
     {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
+    {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
 
     not_found = svc_tbl_column:all(),
     ok = savanna_commons:create_schema(
