@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,9 +19,9 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_metrics_histogram).
+-module(svc_metrics_histogram).
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -43,11 +43,11 @@
          code_change/3]).
 
 -record(state, {name :: atom(),
-                sample_type :: svdb_histogram_type(),
+                sample_type :: sv_histogram_type(),
                 window = 0  :: pos_integer(),
                 reservoir   :: pos_integer(),
                 server      :: pid(),
-                callback    :: atom() %% see:'svdbc_notify_behaviour'
+                callback    :: atom() %% see:'svc_notify_behaviour'
                }).
 
 -record(metric, {tags = sets:new() :: set(),
@@ -66,18 +66,18 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
--spec(start_link(atom(), svdb_histogram_type(), function()) ->
+-spec(start_link(atom(), sv_histogram_type(), function()) ->
              {ok, pid()} | {error, any()}).
 start_link(Name, HistogramType, Callback) ->
     start_link(Name, HistogramType, ?DEF_WINDOW, Callback()).
 
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer(), function()) ->
+-spec(start_link(atom(), sv_histogram_type(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
 start_link(Name, HistogramType, Window, Callback) ->
     start_link(Name, HistogramType, Window, ?DEFAULT_SIZE, Callback).
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), function()) ->
+-spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(), function()) ->
              {ok, pid()} | {error, any()}).
 start_link(Name, ?HISTOGRAM_SLIDE_UNIFORM = HistogramType, Window, SampleSize, Callback) ->
     gen_server:start_link({local, Name}, ?MODULE,
@@ -87,7 +87,7 @@ start_link(Name, ?HISTOGRAM_SLIDE_UNIFORM = HistogramType, Window, SampleSize, C
 start_link(Name, HistogramType, Window, SampleSize, Callback) ->
     start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
 
--spec(start_link(atom(), svdb_histogram_type(), pos_integer(), pos_integer(), float(), function()) ->
+-spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(), float(), function()) ->
              {ok, pid()} | {error, any()}).
 start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback) ->
     gen_server:start_link({local, Name}, ?MODULE,
@@ -98,28 +98,28 @@ stop(Name) ->
 
 
 %% @doc Retrieve value
--spec(get_values(svdb_metric()) ->
+-spec(get_values(sv_metric()) ->
              {ok, list()}).
 get_values(Name) ->
     gen_server:call(Name, get_values, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve histogram-stat
--spec(get_histogram_statistics(svdb_metric()) ->
+-spec(get_histogram_statistics(sv_metric()) ->
              {ok, list()} | not_found | {error, any()}).
 get_histogram_statistics(Name) ->
     gen_server:call(Name, get_histogram_statistics, ?DEF_TIMEOUT).
 
 
 %% @doc Put a value
--spec(update(svdb_metric(), any()) ->
+-spec(update(sv_metric(), any()) ->
              ok | {error, any()}).
 update(Name, Value) ->
     gen_server:call(Name, {update, Value}, ?DEF_TIMEOUT).
 
 
 %% @doc Resize the metric
--spec(resize(svdb_metric(), pos_integer()) ->
+-spec(resize(sv_metric(), pos_integer()) ->
              ok | {error, any()}).
 resize(Name, NewSize) ->
     gen_server:call(Name, {resize, NewSize}, ?DEF_TIMEOUT).
@@ -187,7 +187,7 @@ init_1(Sample, #state{name = Name,
                       sample_type = SampleType,
                       window = Window,
                       reservoir = Reservoir} = State) ->
-    Pid = svdbc_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
+    Pid = savanna_commons_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
     Hist = #histogram{type = SampleType, sample = Sample},
     true = ets:insert(?HISTOGRAM_TABLE, {Name, Hist}),
     true = ets:insert(?FOLSOM_TABLE, {Name, #metric{type = histogram}}),
@@ -221,7 +221,7 @@ handle_call({update, Value}, _From, #state{name = Name} = State) ->
     {reply, ok, State};
 
 handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
-    ok = svdbc_sample_slide_server:resize(Pid, NewSize),
+    ok = svc_sample_slide_server:resize(Pid, NewSize),
     {reply, ok, State#state{window = NewSize}};
 
 handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
@@ -230,7 +230,7 @@ handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
     %% Retrieve the current value, then execute the callback-function
     case is_atom(Callback) of
         true ->
-            {SchemaName, Key} = ?svdb_schema_and_key(Name),
+            {SchemaName, Key} = ?sv_schema_and_key(Name),
             CurrentStat = get_current_statistics(Name, SampleType),
             catch Callback:notify(SchemaName, {Key, CurrentStat});
         false ->

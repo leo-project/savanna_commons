@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,10 +19,10 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_tbl_column).
+-module(svc_tbl_column).
 -author('Yosuke Hara').
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
@@ -46,8 +46,8 @@ create_table(Mode, Nodes) ->
       ?TBL_COLUMNS,
       [{Mode, Nodes},
        {type, set},
-       {record_name, svdb_column},
-       {attributes, record_info(fields, svdb_column)},
+       {record_name, sv_column},
+       {attributes, record_info(fields, sv_column)},
        {user_properties,
         [{id,           pos_integer, primary},
          {schema_name,  atom,        false  },
@@ -61,7 +61,7 @@ create_table(Mode, Nodes) ->
 %% @doc Retrieve all records
 %%
 -spec(all() ->
-             {ok, [#svdb_column{}]} | not_found | {error, any()}).
+             {ok, [#sv_column{}]} | not_found | {error, any()}).
 all() ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -78,8 +78,8 @@ all() ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(get(svdb_schema(), svdb_key()) ->
-             {ok, #svdb_column{}} | not_found | {error, any()}).
+-spec(get(sv_schema(), sv_key()) ->
+             {ok, #sv_column{}} | not_found | {error, any()}).
 get(Schema, ColumnName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -87,8 +87,8 @@ get(Schema, ColumnName) ->
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#svdb_column.schema_name == Schema,
-                                        X#svdb_column.name == ColumnName]),
+                                        X#sv_column.schema_name == Schema,
+                                        X#sv_column.name == ColumnName]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -101,8 +101,8 @@ get(Schema, ColumnName) ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(find_by_schema_name(svdb_schema()) ->
-             {ok, #svdb_column{}} | not_found | {error, any()}).
+-spec(find_by_schema_name(sv_schema()) ->
+             {ok, #sv_column{}} | not_found | {error, any()}).
 find_by_schema_name(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -110,7 +110,7 @@ find_by_schema_name(SchemaName) ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                         X#svdb_column.schema_name == SchemaName]),
+                                         X#sv_column.schema_name == SchemaName]),
                         Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
@@ -125,15 +125,15 @@ find_by_schema_name(SchemaName) ->
 
 %% @doc Modify a schema
 %%
--spec(update(#svdb_column{}) ->
+-spec(update(#sv_column{}) ->
              ok | {error, any()}).
 update(Column) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Column_1 = Column#svdb_column{id = ?MODULE:size() + 1,
-                                          created_at = leo_date:now()},
+            Column_1 = Column#sv_column{id = ?MODULE:size() + 1,
+                                        created_at = leo_date:now()},
             F = fun()-> mnesia:write(?TBL_NAME, Column_1, write) end,
             leo_mnesia:write(F)
     end.
@@ -141,7 +141,7 @@ update(Column) ->
 
 %% @doc Remove system-configuration
 %%
--spec(delete(svdb_schema(), svdb_key()) ->
+-spec(delete(sv_schema(), sv_key()) ->
              ok | {error, any()}).
 delete(Schema, ColumnName) ->
     case ?MODULE:get(Schema, ColumnName) of
@@ -157,7 +157,7 @@ delete(Schema, ColumnName) ->
 
 %% @doc Retrieve the checksum of this table
 %%
--spec(checksum(svdb_schema()) ->
+-spec(checksum(sv_schema()) ->
              integer() | {error, any()}).
 checksum(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
@@ -166,7 +166,7 @@ checksum(SchemaName) ->
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#svdb_column.schema_name == SchemaName]),
+                                        X#sv_column.schema_name == SchemaName]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of

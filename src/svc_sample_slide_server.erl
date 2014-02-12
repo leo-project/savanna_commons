@@ -26,7 +26,7 @@
 %%% See folsom.hrl, folsom_sample_slide, folsom_sample_slide_sup
 %%% @end
 %%%-----------------------------------------------------------------
--module(svdbc_sample_slide_server).
+-module(svc_sample_slide_server).
 
 -behaviour(gen_server).
 

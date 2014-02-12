@@ -1,4 +1,4 @@
-# **savannadb_commons**
+# **savanna_commons**
 
 An original statistics library, which is able to easily realize to calculate statistics such as counter and histogram.
 
@@ -6,8 +6,8 @@ An original statistics library, which is able to easily realize to calculate sta
 
 ```erlang
 
--behaviour(svdbc_notify_behaviour).
--include("savannadb_commons.hrl").
+-behaviour(svc_notify_behaviour).
+-include("savanna_commons.hrl").
 
 notify(Schema, {Key, Values}) ->
     io:format("schema:~w, key:~w, value:~p",
@@ -21,16 +21,16 @@ sample() ->
     %% Start "mnesia"
     mnesia:start(),
 
-    %% Start savannadb_commons's supervisor
-    {ok,_Pid} = svdbc_sup:start_link(),
+    %% Start savanna_commons's supervisor
+    {ok,_Pid} = savanna_commons_sup:start_link(),
 
     %% Create tables in order to manage the statistics-schemas
-    {atomic,ok} = svdbc_tbl_schema:create_table(ram_copies, [node()]),
-    {atomic,ok} = svdbc_tbl_column:create_table(ram_copies, [node()]),
+    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
 
     %% Create a schema
     SchemaName = 'test_1',
-    ok = savannadb_commons:create_schema(
+    ok = savanna_commons:create_schema(
             SchemaName, [#svdb_column{name = 'col_1',
                                       type = ?COL_TYPE_COUNTER,
                                       constraint = []},
@@ -41,31 +41,31 @@ sample() ->
 
     %% Create a metric by the schema
     Window = 10,
-    ok = savannadb_commons:create_metrics_by_schema(SchemaName, Window, ?MODULE),
+    ok = savanna_commons:create_metrics_by_schema(SchemaName, Window, ?MODULE),
 
     %% Notify events for a column (Counter)
     Key_1 = 'col_1',
-    savannadb_commons:notify(Schema, {Key_1,  128}),
-    savannadb_commons:notify(Schema, {Key_1,  256}),
-    savannadb_commons:notify(Schema, {Key_1,  384}),
-    savannadb_commons:notify(Schema, {Key_1,  512}),
-    savannadb_commons:notify(Schema, {Key_1, 1024}),
+    savanna_commons:notify(Schema, {Key_1,  128}),
+    savanna_commons:notify(Schema, {Key_1,  256}),
+    savanna_commons:notify(Schema, {Key_1,  384}),
+    savanna_commons:notify(Schema, {Key_1,  512}),
+    savanna_commons:notify(Schema, {Key_1, 1024}),
 
     %% Notify events for a column (Histogram)
     Key_2 = 'col_2',
-    savannadb_commons:notify(Schema, {Key_2,  16}),
-    savannadb_commons:notify(Schema, {Key_2,  32}),
-    savannadb_commons:notify(Schema, {Key_2,  64}),
-    savannadb_commons:notify(Schema, {Key_2, 128}),
-    savannadb_commons:notify(Schema, {Key_2, 256}),
+    savanna_commons:notify(Schema, {Key_2,  16}),
+    savanna_commons:notify(Schema, {Key_2,  32}),
+    savanna_commons:notify(Schema, {Key_2,  64}),
+    savanna_commons:notify(Schema, {Key_2, 128}),
+    savanna_commons:notify(Schema, {Key_2, 256}),
 
     %% Retrieve stats
-    {ok, _Ret_1} = savannadb_commons:get_metric_value(Schema, Key_1),
-    {ok, _Ret_2} = savannadb_commons:get_histogram_statistics(Schema, Key_2),
+    {ok, _Ret_1} = savanna_commons:get_metric_value(Schema, Key_1),
+    {ok, _Ret_2} = savanna_commons:get_histogram_statistics(Schema, Key_2),
     ok.
 
 ```
 
 ## License
 
-savannadb_commons's license is [Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
+savanna_commons's license is [Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)

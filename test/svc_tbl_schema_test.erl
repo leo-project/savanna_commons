@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB Commons
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,10 +19,10 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_tbl_schema_test).
+-module(svc_tbl_schema_test).
 -author('Yosuke Hara').
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 suite_test_() ->
@@ -40,28 +40,28 @@ suite_test_() ->
 suite() ->
     SchemaName_1 = 'test_1',
     SchemaName_2 = 'test_2',
-    Schema_1 = #svdb_schema{name = SchemaName_1,
-                            created_at = leo_date:now()},
-    Schema_2 = #svdb_schema{name = SchemaName_2,
-                            created_at = leo_date:now()},
+    Schema_1 = #sv_schema{name = SchemaName_1,
+                          created_at = leo_date:now()},
+    Schema_2 = #sv_schema{name = SchemaName_2,
+                          created_at = leo_date:now()},
 
-    {atomic,ok} = svdbc_tbl_schema:create_table(ram_copies, [node()]),
-    not_found = svdbc_tbl_schema:all(),
-    not_found = svdbc_tbl_schema:get(SchemaName_1),
-    not_found = svdbc_tbl_schema:get(SchemaName_2),
+    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    not_found = svc_tbl_schema:all(),
+    not_found = svc_tbl_schema:get(SchemaName_1),
+    not_found = svc_tbl_schema:get(SchemaName_2),
 
-    ok = svdbc_tbl_schema:update(Schema_1),
-    ok = svdbc_tbl_schema:update(Schema_2),
-    Checksum_1 = svdbc_tbl_schema:checksum(),
-    2 = svdbc_tbl_schema:size(),
+    ok = svc_tbl_schema:update(Schema_1),
+    ok = svc_tbl_schema:update(Schema_2),
+    Checksum_1 = svc_tbl_schema:checksum(),
+    2 = svc_tbl_schema:size(),
 
-    {ok, Schema_1} = svdbc_tbl_schema:get(SchemaName_1),
-    {ok, Schema_2} = svdbc_tbl_schema:get(SchemaName_2),
-    ok = svdbc_tbl_schema:delete(SchemaName_1),
-    not_found = svdbc_tbl_schema:get(SchemaName_1),
+    {ok, Schema_1} = svc_tbl_schema:get(SchemaName_1),
+    {ok, Schema_2} = svc_tbl_schema:get(SchemaName_2),
+    ok = svc_tbl_schema:delete(SchemaName_1),
+    not_found = svc_tbl_schema:get(SchemaName_1),
 
-    Checksum_2 = svdbc_tbl_schema:checksum(),
+    Checksum_2 = svc_tbl_schema:checksum(),
     ?assertEqual(true, Checksum_1 /= Checksum_2),
 
-    1 = svdbc_tbl_schema:size(),
+    1 = svc_tbl_schema:size(),
     ok.

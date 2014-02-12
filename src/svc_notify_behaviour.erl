@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,12 +19,12 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_notify_behaviour).
+-module(svc_notify_behaviour).
 -author('Yosuke Hara').
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 
 %% @doc Notify metric(s) and statistics to a callback-mod
 %%
--callback(notify(Schema::svdb_schema(), {Key::svdb_key(), Values::svdb_values()}) ->
+-callback(notify(Schema::sv_schema(), {Key::sv_key(), Values::sv_values()}) ->
                  ok | {error, any()}).

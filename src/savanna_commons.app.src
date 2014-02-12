@@ -20,12 +20,12 @@
 %% under the License.
 %%
 %%======================================================================
-{application, savannadb_commons,
+{application, savanna_commons,
  [
-  {description, "SavannaDB's common library"},
+  {description, "Savanna's common library"},
   {vsn, "0.2.1"},
   {modules, [
-             savannadb_commons
+             savanna_commons
             ]},
   {registered, []},
   {applications, [

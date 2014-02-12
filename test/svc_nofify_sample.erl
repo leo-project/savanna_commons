@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,10 +19,10 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_nofify_sample).
+-module(svc_nofify_sample).
 -author('Yosuke Hara').
 
--behaviour(svdbc_notify_behaviour).
+-behaviour(svc_notify_behaviour).
 
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/2]).

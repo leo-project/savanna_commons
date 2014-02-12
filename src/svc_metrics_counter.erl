@@ -1,6 +1,6 @@
 %%======================================================================
 %%
-%% LeoProject - SavannaDB
+%% LeoProject - Savanna Commons
 %%
 %% Copyright (c) 2014 Rakuten, Inc.
 %%
@@ -19,12 +19,12 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_metrics_counter).
+-module(svc_metrics_counter).
 -author('Yosuke Hara').
 
 -behaviour(gen_server).
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -47,7 +47,7 @@
                 window = 0  :: pos_integer(),
                 server      :: pid(),
                 before = 0  :: pos_integer(),
-                callback    :: atom() %% see:'svdbc_notify_behaviour'
+                callback    :: atom() %% see:'svc_notify_behaviour'
                }).
 
 -define(DEF_WINDOW, 10).
@@ -93,7 +93,7 @@ trim(Name, Tid, Window) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 init([Name, Window, Callback]) ->
-    Pid = svdbc_sup:start_slide_server(?MODULE, Name, -1, Window),
+    Pid = savanna_commons_sup:start_slide_server(?MODULE, Name, -1, Window),
     ok = folsom_ets:add_handler(counter, Name),
     {ok, #state{name = Name,
                 window = Window,
@@ -101,7 +101,7 @@ init([Name, Window, Callback]) ->
                 callback  = Callback}}.
 
 handle_call(stop, _From, #state{server = _Pid} = State) ->
-    ok = svdbc_sample_slide_server:stop(_Pid),
+    ok = svc_sample_slide_server:stop(_Pid),
     {stop, shutdown, ok, State};
 
 
@@ -119,7 +119,7 @@ handle_call({trim,_Tid, Window}, _From, #state{name = Name,
 
     case is_atom(Callback) of
         true ->
-            {SchemaName, Key} = ?svdb_schema_and_key(Name),
+            {SchemaName, Key} = ?sv_schema_and_key(Name),
             catch Callback:notify(SchemaName, {Key, Count});
         false ->
             void

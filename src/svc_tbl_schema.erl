@@ -19,10 +19,10 @@
 %% under the License.
 %%
 %%======================================================================
--module(svdbc_tbl_schema).
+-module(svc_tbl_schema).
 -author('Yosuke Hara').
 
--include("savannadb_commons.hrl").
+-include("savanna_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
@@ -46,8 +46,8 @@ create_table(Mode, Nodes) ->
       ?TBL_SCHEMAS,
       [{Mode, Nodes},
        {type, set},
-       {record_name, svdb_schema},
-       {attributes, record_info(fields, svdb_schema)},
+       {record_name, sv_schema},
+       {attributes, record_info(fields, sv_schema)},
        {user_properties,
         [{name,       atom,        primary},
          {created_at, pos_integer, false  }
@@ -57,7 +57,7 @@ create_table(Mode, Nodes) ->
 %% @doc Retrieve all records
 %%
 -spec(all() ->
-             {ok, [#svdb_schema{}]} | not_found | {error, any()}).
+             {ok, [#sv_schema{}]} | not_found | {error, any()}).
 all() ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -74,8 +74,8 @@ all() ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(get(svdb_schema()) ->
-             {ok, #svdb_schema{}} | not_found | {error, any()}).
+-spec(get(sv_schema()) ->
+             {ok, #sv_schema{}} | not_found | {error, any()}).
 get(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -83,7 +83,7 @@ get(SchemaName) ->
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#svdb_schema.name == SchemaName]),
+                                        X#sv_schema.name == SchemaName]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -97,7 +97,7 @@ get(SchemaName) ->
 
 %% @doc Modify a schema
 %%
--spec(update(#svdb_schema{}) ->
+-spec(update(#sv_schema{}) ->
              ok | {error, any()}).
 update(Schema) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
@@ -111,7 +111,7 @@ update(Schema) ->
 
 %% @doc Remove a schema
 %%
--spec(delete(svdb_schema()) ->
+-spec(delete(sv_schema()) ->
              ok | {error, any()}).
 delete(SchemaName) ->
     case ?MODULE:get(SchemaName) of
