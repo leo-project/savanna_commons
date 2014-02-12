@@ -127,27 +127,42 @@ find_by_schema_name(SchemaName) ->
 %%
 -spec(update(#sv_column{}) ->
              ok | {error, any()}).
-update(Column) ->
+update(#sv_column{schema_name = Schema,
+                  name = ColName} = Col) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Column_1 = Column#sv_column{id = ?MODULE:size() + 1,
-                                        created_at = leo_date:now()},
-            F = fun()-> mnesia:write(?TBL_NAME, Column_1, write) end,
-            leo_mnesia:write(F)
+            Ret = case get(Schema, ColName) of
+                      {ok, #sv_column{id = Id}} ->
+                          {ok, Col#sv_column{id = Id,
+                                             created_at = leo_date:now()}};
+                      not_found ->
+                          {ok, Col#sv_column{id = ?MODULE:size() + 1,
+                                             created_at = leo_date:now()}};
+                      {error, Cause} ->
+                          {error, Cause}
+                  end,
+            update_1(Ret)
     end.
+
+%% @private
+update_1({ok, Col}) ->
+    F = fun()-> mnesia:write(?TBL_NAME, Col, write) end,
+    leo_mnesia:write(F);
+update_1({error, Cause}) ->
+    {error, Cause}.
 
 
 %% @doc Remove system-configuration
 %%
 -spec(delete(sv_schema(), sv_key()) ->
              ok | {error, any()}).
-delete(Schema, ColumnName) ->
-    case ?MODULE:get(Schema, ColumnName) of
-        {ok, Column} ->
+delete(Schema, ColName) ->
+    case ?MODULE:get(Schema, ColName) of
+        {ok, Col} ->
             Fun = fun() ->
-                          mnesia:delete_object(?TBL_NAME, Column, write)
+                          mnesia:delete_object(?TBL_NAME, Col, write)
                   end,
             leo_mnesia:delete(Fun);
         Error ->
