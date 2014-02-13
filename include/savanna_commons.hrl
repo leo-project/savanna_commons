@@ -64,6 +64,7 @@
                           ?COL_TYPE_HISTORY).
 
 -define(SV_PREFIX_NAME, "sv_").
+-define(SV_THRESHOLD_OF_REMOVAL_PROC, 3).
 
 %% Macro
 %% @doc Generate a metric-name from a schema-name and a key

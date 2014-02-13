@@ -44,9 +44,13 @@
          code_change/3]).
 
 -record(state, {name :: atom(),
-                window = 0  :: pos_integer(),
-                server      :: pid(),
-                callback    :: atom() %% see:'svc_notify_behaviour'
+                window = 0 :: pos_integer(),
+                server     :: pid(),  %% server's pid
+                callback   :: atom(), %% see:'svc_notify_behaviour'
+
+                %% after this counter was over threshold of removal proc,
+                %% then the server-proc will be removed
+                counter = 0 :: pos_integer()
                }).
 
 -define(DEF_WINDOW, 10).
@@ -108,23 +112,32 @@ handle_call(get_values, _From, #state{name = Name} = State) ->
     Count = folsom_metrics_counter:get_value(Name),
     {reply, {ok, Count}, State};
 
-handle_call({trim,_Tid, Window}, _From, #state{name = Name,
-                                               callback = Callback,
-                                               window = Window} = State) ->
+handle_call({trim,_Reservoir, Window}, _From, #state{name = Name,
+                                                     callback = Callback,
+                                                     server = Pid,
+                                                     window   = Window,
+                                                     counter  = Counter} = State) ->
     %% Retrieve the current value, then execute the callback-function
-    Count = folsom_metrics_counter:get_value(Name),
+    case folsom_metrics_counter:get_value(Name) of
+        0 when Counter =< ?SV_THRESHOLD_OF_REMOVAL_PROC ->
+            %% Terminate the server-proc
+            timer:apply_after(100, savanna_commons_sup, stop_slide_server, [Pid]),
+            {reply, ok, State#state{counter = Counter + 1}};
+        0 ->
+            {reply, ok, State#state{counter = Counter + 1}};
+        Count ->
+            case is_atom(Callback) of
+                true ->
+                    {SchemaName, Key} = ?sv_schema_and_key(Name),
+                    catch Callback:notify(SchemaName, {Key, Count});
+                false ->
+                    void
+            end,
 
-    case is_atom(Callback) of
-        true ->
-            {SchemaName, Key} = ?sv_schema_and_key(Name),
-            catch Callback:notify(SchemaName, {Key, Count});
-        false ->
-            void
-    end,
-
-    %% Clear oldest data
-    folsom_metrics_counter:clear(Name),
-    {reply, ok, State}.
+            %% Clear oldest data
+            folsom_metrics_counter:clear(Name),
+            {reply, ok, State#state{counter = 0}}
+    end.
 
 
 handle_cast(_Msg, State) ->

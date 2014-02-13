@@ -46,8 +46,12 @@
                 sample_type :: sv_histogram_type(),
                 window = 0  :: pos_integer(),
                 reservoir   :: pos_integer(),
-                server      :: pid(),
-                callback    :: atom() %% see:'svc_notify_behaviour'
+                server      :: pid(),  %% server's pid
+                callback    :: atom(), %% see:'svc_notify_behaviour'
+
+                %% after this counter was over threshold of removal proc,
+                %% then the server-proc will be removed
+                counter = 0 :: pos_integer()
                }).
 
 -record(metric, {tags = sets:new() :: set(),
@@ -209,30 +213,39 @@ handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
     ok = svc_sample_slide_server:resize(Pid, NewSize),
     {reply, ok, State#state{window = NewSize}};
 
+handle_call({trim,_Reservoir,_Window}, _From, #state{callback = undefined} = State) ->
+    {reply, ok, State};
 handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
                                                      sample_type = SampleType,
-                                                     callback = Callback} = State) ->
+                                                     callback = Callback,
+                                                     server = Pid,
+                                                     counter = Counter} = State) ->
     %% Retrieve the current value, then execute the callback-function
-    case is_atom(Callback) of
-        true ->
-            {MetricGroup, Key} = ?sv_schema_and_key(Name),
-            CurrentStat = get_current_statistics(Name),
-            catch Callback:notify(MetricGroup, {Key, CurrentStat});
-        false ->
-            void
-    end,
+    {MetricGroup, Key} = ?sv_schema_and_key(Name),
+    CurrentStat = get_current_statistics(Name),
+    Max = leo_misc:get_value('max', CurrentStat, 0),
+    Min = leo_misc:get_value('min', CurrentStat, 0),
 
-    %% Remove oldest data
-    try
-        trim_1(SampleType, Name, Reservoir, Window)
-    catch
-        _:Cause ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING},
-                                    {function, "handle_call/3"},
-                                    {line, ?LINE}, {body, Cause}])
-    end,
-    {reply, ok, State}.
+    case {Max, Min} of
+        {0.0, 0.0} when Counter =< ?SV_THRESHOLD_OF_REMOVAL_PROC ->
+            %% Terminate the server-proc
+            timer:apply_after(100, savanna_commons_sup, stop_slide_server, [Pid]),
+            {reply, ok, State#state{counter = Counter + 1}};
+        {0.0, 0.0} ->
+            {reply, ok, State#state{counter = Counter + 1}};
+        _ ->
+            catch Callback:notify(MetricGroup, {Key, CurrentStat}),
+            try
+                trim_1(SampleType, Name, Reservoir, Window)
+            catch
+                _:Cause ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "trim_1/3"},
+                                            {line, ?LINE}, {body, Cause}])
+            end,
+            {reply, ok, State#state{counter = 0}}
+    end.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

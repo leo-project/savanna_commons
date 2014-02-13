@@ -46,7 +46,6 @@ start_slide_server(SampleMod, ServerId, Reservoir, Window) ->
     Pid.
 
 stop_slide_server(Pid) ->
-    ?debugVal(Pid),
     catch supervisor:terminate_child(?MODULE, Pid),
     catch supervisor:delete_child(?MODULE, Pid),
     ok.
