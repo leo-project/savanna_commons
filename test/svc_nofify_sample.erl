@@ -35,6 +35,8 @@ notify(MetricGroup, {Key, Values}) ->
             ?debugVal({MetricGroup, {Key, Values}});
         'test_histogram_2' ->
             ?debugVal({MetricGroup, {Key, Values}});
+        'test_histogram_3' ->
+            ?debugVal({MetricGroup, {Key, Values}});
         _ ->
             void
     end,

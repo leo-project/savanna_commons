@@ -297,5 +297,16 @@ trim_1(?HISTOGRAM_UNIFORM, Name, Reservoir,_Window) ->
                                           seed = os:timestamp()}}}),
     ets:delete_all_objects(Reservoir),
     ok;
-trim_1(?HISTOGRAM_EXDEC,_,_,_) ->
+trim_1(?HISTOGRAM_EXDEC, Name,_,_) ->
+    Hist = get_value(Name),
+    Sample = Hist#histogram.sample,
+    Reservoir = Sample#exdec.reservoir,
+    true = ets:insert(?HISTOGRAM_TABLE,
+                      {Name, Hist#histogram{
+                               sample = Sample#exdec{start = 0,
+                                                     next = 0,
+                                                     seed = os:timestamp(),
+                                                     n = 1}
+                              }}),
+    ets:delete_all_objects(Reservoir),
     ok.

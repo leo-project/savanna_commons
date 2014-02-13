@@ -52,7 +52,9 @@ suite_test_() ->
       {"test counter metrics for 60sec#1",
        {timeout, 40, fun histogram_2/0}},
       {"test counter metrics for 60sec#2",
-       {timeout, 140, fun histogram_3/0}}
+       {timeout, 140, fun histogram_3/0}},
+      {"test counter metrics for 60sec#3",
+       {timeout, 140, fun histogram_4/0}}
      ]}.
 
 counter_metrics_1() ->
@@ -257,6 +259,21 @@ histogram_3() ->
     EndTime   = StartTime + 130,
     inspect_2(Schema, Key, StartTime, EndTime),
     ?debugVal("### DONE - histogram_3/0 ###"),
+    ok.
+
+%% TEST metric histogram - (exdec)
+histogram_4() ->
+    Schema = 'test_histogram_3',
+    Key = 'h1',
+    Window = 30,
+    SampleSize = 3000,
+    savanna_commons:new(?METRIC_HISTOGRAM,
+                        ?HISTOGRAM_EXDEC,
+                        Schema, Key, Window, SampleSize, 'svc_nofify_sample'),
+    StartTime = leo_date:now(),
+    EndTime   = StartTime + 130,
+    inspect_2(Schema, Key, StartTime, EndTime),
+    ?debugVal("### DONE - histogram_4/0 ###"),
     ok.
 
 
