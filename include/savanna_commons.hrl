@@ -72,14 +72,15 @@
                                    atom_to_list(_MetricGroup), ".", atom_to_list(_Key)]))).
 
 %% @doc Retrieve a schema-name and a key from a metric-name
--define(sv_schema_and_key(_MetricGroupName),
+-define(sv_schema_and_key(_Name),
         begin
-            _MetricGroupName_1 = atom_to_list(_MetricGroupName),
+            _Name_1 = atom_to_list(_Name),
             _PrefixLen = length(?SV_PREFIX_NAME),
-            _Index  = string:chr(_MetricGroupName_1, $.),
-            _Schema = list_to_atom(string:sub_string(_MetricGroupName_1, 1 + _PrefixLen, _Index - 1)),
-            _Key    = list_to_atom(string:sub_string(_MetricGroupName_1, _Index + 1)),
-            {_Schema,_Key}
+            _Index  = string:chr(_Name_1, $.),
+
+            _MetricGrp = list_to_atom(string:sub_string(_Name_1, 1 + _PrefixLen, _Index - 1)),
+            _Column    = list_to_atom(string:sub_string(_Name_1, _Index + 1)),
+            {_MetricGrp,_Column}
         end).
 
 
@@ -102,5 +103,7 @@
           id          :: pos_integer(),
           schema_name :: sv_schema(),
           name        :: sv_metric_grp(),
-          created_at  :: pos_integer()
+          window = 0  :: pos_integer(),
+          callback    :: atom(),
+          created_at  :: pos_integer() %% see:'svc_notify_behaviour'
          }).

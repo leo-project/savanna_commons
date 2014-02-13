@@ -22,6 +22,10 @@
 -module(savanna_commons).
 -author('Yosuke Hara').
 
+-include("savanna_commons.hrl").
+-include_lib("folsom/include/folsom.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
 -export([new/4, new/5, new/6, new/7, new/8,
          stop/2,
          create_schema/2,
@@ -30,9 +34,6 @@
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
--include("savanna_commons.hrl").
--include_lib("folsom/include/folsom.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 %% ===================================================================
 %% API
@@ -125,7 +126,9 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
                 {ok, Columns} ->
                     case svc_tbl_metric_group:update(
                            #sv_metric_group{schema_name = SchemaName,
-                                            name = MetricGroupName}) of
+                                            name = MetricGroupName,
+                                            window = Window,
+                                            callback = Callback}) of
                         ok ->
                             create_metrics_by_schema_1(
                               MetricGroupName, Columns, Window, Callback);
@@ -181,10 +184,10 @@ create_metrics_by_schema_1(_,_,_,_) ->
 
 %% @doc Notify an event with a schema and a key
 %%
--spec(notify(sv_schema(), sv_keyval()) ->
+-spec(notify(sv_metric_grp(), sv_keyval()) ->
              ok | {error, any()}).
-notify(Schema, {Key, Event}) ->
-    Name = ?sv_metric_name(Schema, Key),
+notify(MetricGroup, {Key, Event}) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     notify(check_type(Name), Name, Event).
 
 %% @private
@@ -198,10 +201,10 @@ notify(_,_,_) ->
 
 %% @doc Retrieve a metric value
 %%
--spec(get_metric_value(sv_schema(), atom()) ->
+-spec(get_metric_value(sv_metric_grp(), atom()) ->
              {ok, any()} | {error, any()}).
-get_metric_value(Schema, Key) ->
-    Name = ?sv_metric_name(Schema, Key),
+get_metric_value(MetricGroup, Key) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     get_metric_value_1(check_type(Name), Name).
 
 %% @private
@@ -215,8 +218,8 @@ get_metric_value_1(_,_) ->
 
 %% @doc Retrieve a historgram statistics
 %%
-get_histogram_statistics(Schema, Key) ->
-    Name = ?sv_metric_name(Schema, Key),
+get_histogram_statistics(MetricGroup, Key) ->
+    Name = ?sv_metric_name(MetricGroup, Key),
     case check_type(Name) of
         ?METRIC_HISTOGRAM ->
             svc_metrics_histogram:get_histogram_statistics(Name);
@@ -233,8 +236,29 @@ check_type(Name) ->
     check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name).
 
 %% @private
-check_type([],_Name) ->
-    not_found;
+check_type([], Name) ->
+    %% If retrieved a metric-group-info,
+    %% then it will generate metrics
+    {MetricGroup, Column} = ?sv_schema_and_key(Name),
+    case svc_tbl_metric_group:get(MetricGroup) of
+        {ok, #sv_metric_group{schema_name = Schema,
+                              window = Window,
+                              callback = Callback}} ->
+            case create_metrics_by_schema(
+                   Schema, MetricGroup, Window, Callback) of
+                ok ->
+                    case svc_tbl_column:get(Schema, Column) of
+                        {ok, #sv_column{type = Type}} ->
+                            Type;
+                        Error ->
+                            Error
+                    end;
+                Error ->
+                    Error
+            end;
+        _ ->
+            not_found
+    end;
 check_type([?METRIC_COUNTER = Type|Rest], Name) ->
     case ets:lookup(?COUNTER_TABLE, {Name, 0}) of
         [{{Name, 0},0}|_] ->

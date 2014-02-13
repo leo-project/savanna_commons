@@ -30,8 +30,8 @@
 %% API
 -export([create_table/2,
          all/0,
-         get/2, find_by_schema_name/1,
-         update/1, delete/2,
+         get/1, find_by_schema_name/1,
+         update/1, delete/1,
          checksum/1, size/0
         ]).
 
@@ -54,6 +54,8 @@ create_table(Mode, Nodes) ->
          {id,           pos_integer, primary},
          {schema_name,  atom,        false  },
          {name,         atom,        false  },
+         {window,       pos_integer, false  },
+         {callback,     atom,        false  },
          {created_at,   pos_integer, false  }
         ]}
       ]).
@@ -78,17 +80,16 @@ all() ->
 
 %% @doc Retrieve a schema by name
 %%
--spec(get(sv_schema(), sv_metric_grp()) ->
+-spec(get(sv_metric_grp()) ->
              {ok, #sv_metric_group{}} | not_found | {error, any()}).
-get(SchemaName, MetricGroupName) ->
+get(MetricGroupName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        (X#sv_metric_group.schema_name == SchemaName andalso
-                                         X#sv_metric_group.name == MetricGroupName)]),
+                                        X#sv_metric_group.name == MetricGroupName]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -128,13 +129,12 @@ find_by_schema_name(SchemaName) ->
 %%
 -spec(update(#sv_metric_group{}) ->
              ok | {error, any()}).
-update(#sv_metric_group{schema_name = Schema,
-                        name = MetricGroupName} = MetricGroup) ->
+update(#sv_metric_group{name = MetricGroupName} = MetricGroup) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Ret = case get(Schema, MetricGroupName) of
+            Ret = case ?MODULE:get(MetricGroupName) of
                       {ok, #sv_metric_group{id = Id}} ->
                           {ok, MetricGroup#sv_metric_group{id = Id,
                                                            created_at = leo_date:now()}};
@@ -157,10 +157,10 @@ update_1({error, Cause}) ->
 
 %% @doc Remove a schema
 %%
--spec(delete(sv_schema(), sv_metric_grp()) ->
+-spec(delete(sv_metric_grp()) ->
              ok | {error, any()}).
-delete(SchemaName, MetricGroupName) ->
-    case ?MODULE:get(SchemaName, MetricGroupName) of
+delete(MetricGroupName) ->
+    case ?MODULE:get(MetricGroupName) of
         {ok, MetricGroup} ->
             Fun = fun() ->
                           mnesia:delete_object(?TBL_NAME, MetricGroup, write)

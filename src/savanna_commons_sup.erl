@@ -23,25 +23,34 @@
 
 -behaviour(supervisor).
 
+-include_lib("eunit/include/eunit.hrl").
+
 %% API
--export([start_link/0, start_slide_server/4]).
+-export([start_link/0,
+         start_slide_server/4,
+         stop_slide_server/1
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_slide_server(SampleMod, ServerId, Reservoir, Window) ->
     {ok, Pid} = supervisor:start_child(?MODULE, [SampleMod, ServerId, Reservoir, Window]),
     Pid.
+
+stop_slide_server(Pid) ->
+    ?debugVal(Pid),
+    catch supervisor:terminate_child(?MODULE, Pid),
+    catch supervisor:delete_child(?MODULE, Pid),
+    ok.
+
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -50,5 +59,5 @@ init([]) ->
     {ok,{{simple_one_for_one, 3, 180},
          [
           {undefined, {svc_sample_slide_server, start_link, []},
-           transient, brutal_kill, worker, [svc_sample_slide_server]}
+           temporary, brutal_kill, worker, [svc_sample_slide_server]}
          ]}}.
