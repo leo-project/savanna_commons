@@ -49,7 +49,7 @@ create_table(Mode, Nodes) ->
        {record_name, sv_column},
        {attributes, record_info(fields, sv_column)},
        {user_properties,
-        [{id,           pos_integer, primary},
+        [{id,           tumple,      primary},
          {schema_name,  atom,        false  },
          {name,         atom,        false  },
          {type,         atom,        false  },
@@ -134,25 +134,16 @@ update(#sv_column{schema_name = Schema,
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Ret = case get(Schema, ColName) of
-                      {ok, #sv_column{id = Id}} ->
-                          {ok, Col#sv_column{id = Id,
-                                             created_at = leo_date:now()}};
-                      not_found ->
-                          {ok, Col#sv_column{id = ?MODULE:size() + 1,
-                                             created_at = leo_date:now()}};
-                      {error, Cause} ->
-                          {error, Cause}
-                  end,
-            update_1(Ret)
+            Col_1 = case Col#sv_column.created_at of
+                        undefined ->
+                            Col#sv_column{id = {Schema, ColName},
+                                          created_at = leo_date:now()};
+                        _ ->
+                            Col#sv_column{id = {Schema, ColName}}
+                    end,
+            F = fun()-> mnesia:write(?TBL_NAME, Col_1, write) end,
+            leo_mnesia:write(F)
     end.
-
-%% @private
-update_1({ok, Col}) ->
-    F = fun()-> mnesia:write(?TBL_NAME, Col, write) end,
-    leo_mnesia:write(F);
-update_1({error, Cause}) ->
-    {error, Cause}.
 
 
 %% @doc Remove system-configuration

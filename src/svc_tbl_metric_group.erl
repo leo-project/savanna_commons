@@ -51,7 +51,7 @@ create_table(Mode, Nodes) ->
        {attributes, record_info(fields, sv_metric_group)},
        {user_properties,
         [
-         {id,           pos_integer, primary},
+         {id,           tuple,       primary},
          {schema_name,  atom,        false  },
          {name,         atom,        false  },
          {window,       pos_integer, false  },
@@ -129,30 +129,25 @@ find_by_schema_name(SchemaName) ->
 %%
 -spec(update(#sv_metric_group{}) ->
              ok | {error, any()}).
-update(#sv_metric_group{name = MetricGroupName} = MetricGroup) ->
+update(#sv_metric_group{schema_name = SchemaName,
+                        name = MetricGroupName} = MetricGroup) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
-            Ret = case ?MODULE:get(MetricGroupName) of
-                      {ok, #sv_metric_group{id = Id}} ->
-                          {ok, MetricGroup#sv_metric_group{id = Id,
-                                                           created_at = leo_date:now()}};
-                      not_found ->
-                          {ok, MetricGroup#sv_metric_group{id = ?MODULE:size() + 1,
-                                                           created_at = leo_date:now()}};
-                      {error, Cause} ->
-                          {error, Cause}
-                  end,
-            update_1(Ret)
+            MetricGroup_1 =
+                case MetricGroup#sv_metric_group.created_at of
+                    undefined ->
+                        MetricGroup#sv_metric_group{
+                          id = {SchemaName, MetricGroupName},
+                          created_at = leo_date:now()};
+                    _ ->
+                        MetricGroup#sv_metric_group{
+                          id = {SchemaName, MetricGroupName}}
+                end,
+            F = fun()-> mnesia:write(?TBL_NAME, MetricGroup_1, write) end,
+            leo_mnesia:write(F)
     end.
-
-%% @private
-update_1({ok, MetricGroup}) ->
-    F = fun()-> mnesia:write(?TBL_NAME, MetricGroup, write) end,
-    leo_mnesia:write(F);
-update_1({error, Cause}) ->
-    {error, Cause}.
 
 
 %% @doc Remove a schema
