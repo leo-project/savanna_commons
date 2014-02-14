@@ -28,16 +28,5 @@
 -export([notify/2]).
 
 notify(MetricGroup, {Key, Values}) ->
-    case MetricGroup of
-        'test_counter' ->
-            ?debugVal({MetricGroup, {Key, Values}});
-        'test_histogram_1' ->
-            ?debugVal({MetricGroup, {Key, Values}});
-        'test_histogram_2' ->
-            ?debugVal({MetricGroup, {Key, Values}});
-        'test_histogram_3' ->
-            ?debugVal({MetricGroup, {Key, Values}});
-        _ ->
-            void
-    end,
+    ?debugVal({MetricGroup, {Key, Values}}),
     ok.

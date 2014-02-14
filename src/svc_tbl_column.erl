@@ -49,7 +49,7 @@ create_table(Mode, Nodes) ->
        {record_name, sv_column},
        {attributes, record_info(fields, sv_column)},
        {user_properties,
-        [{id,           tumple,      primary},
+        [{id,           tuple,       primary},
          {schema_name,  atom,        false  },
          {name,         atom,        false  },
          {type,         atom,        false  },

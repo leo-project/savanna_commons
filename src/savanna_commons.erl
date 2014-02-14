@@ -42,27 +42,27 @@
 %%
 new(?METRIC_COUNTER, MetricGroup, Key, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_counter:start_link(Name, Callback).
+    savanna_commons_sup:start_child('svc_metrics_counter', Name, Callback).
 
 new(?METRIC_COUNTER, MetricGroup, Key, Window, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_counter:start_link(Name, Window, Callback);
+    savanna_commons_sup:start_child('svc_metrics_counter', Name, Window, Callback);
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_histogram:start_link(Name, HistogramType, Callback).
+    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_histogram:start_link(Name, HistogramType, Window, Callback).
+    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Callback).
+    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, SampleSize, Callback).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Alpha, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    svc_metrics_histogram:start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback).
+    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, SampleSize, Alpha, Callback).
 
 
 %% @doc Stop a process
@@ -96,9 +96,7 @@ create_schema(SchemaName, Columns) ->
 create_schema_1(_,[],_) ->
     ok;
 create_schema_1(SchemaName, [#sv_column{} = Col|Rest], CreatedAt) ->
-    Id = svc_tbl_column:size() + 1,
-    case svc_tbl_column:update(Col#sv_column{id = Id,
-                                             schema_name = SchemaName,
+    case svc_tbl_column:update(Col#sv_column{schema_name = SchemaName,
                                              created_at  = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Rest, CreatedAt);
@@ -147,36 +145,34 @@ create_metrics_by_schema_1(_,[],_,_) ->
     ok;
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_COUNTER,
                                                         name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_COUNTER, MetricGroupName, Key, Window, Callback),
+    ok = new(?METRIC_COUNTER, MetricGroupName, Key, Window, Callback),
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
 
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_UNIFORM,
                                                         constraint  = Constraint,
                                                         name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_UNIFORM,
-    {ok,_Pid} =
-        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
-            N  -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N, Callback)
-        end,
+    ok = case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
+             [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
+             N  -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N, Callback)
+         end,
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_SLIDE,
                                                         name = Key}|Rest], Window, Callback) ->
-    {ok,_Pid} = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, MetricGroupName, Key, Window, Callback),
+    ok = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, MetricGroupName, Key, Window, Callback),
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_EXDEC,
                                                         constraint  = Constraint,
                                                         name = Key}|Rest], Window, Callback) ->
     HType = ?HISTOGRAM_EXDEC,
-    {ok,_Pid} =
-        case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-            [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
-            N1 ->
-                case leo_misc:get_value(?HISTOGRAM_CONS_ALPHA, Constraint, []) of
-                    [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, Callback);
-                    N2 -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, N2, Callback)
-                end
-        end,
+    ok = case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
+             [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
+             N1 ->
+                 case leo_misc:get_value(?HISTOGRAM_CONS_ALPHA, Constraint, []) of
+                     [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, Callback);
+                     N2 -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, N2, Callback)
+                 end
+         end,
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
 create_metrics_by_schema_1(_,_,_,_) ->
     {error, invalid_args}.
@@ -233,32 +229,20 @@ get_histogram_statistics(MetricGroup, Key) ->
 %% ===================================================================
 %% @private
 check_type(Name) ->
-    check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name).
+    case check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name) of
+        not_found ->
+            check_type_1(Name, undefined);
+        Type ->
+            case whereis(Name) of
+                undefined ->
+                    check_type_1(Name, Type);
+                _Pid ->
+                    Type
+            end
+    end.
 
-%% @private
-check_type([], Name) ->
-    %% If retrieved a metric-group-info,
-    %% then it will generate metrics
-    {MetricGroup, Column} = ?sv_schema_and_key(Name),
-    case svc_tbl_metric_group:get(MetricGroup) of
-        {ok, #sv_metric_group{schema_name = Schema,
-                              window = Window,
-                              callback = Callback}} ->
-            case create_metrics_by_schema(
-                   Schema, MetricGroup, Window, Callback) of
-                ok ->
-                    case svc_tbl_column:get(Schema, Column) of
-                        {ok, #sv_column{type = Type}} ->
-                            Type;
-                        Error ->
-                            Error
-                    end;
-                Error ->
-                    Error
-            end;
-        _ ->
-            not_found
-    end;
+check_type([],_Name) ->
+    not_found;
 check_type([?METRIC_COUNTER = Type|Rest], Name) ->
     case ets:lookup(?COUNTER_TABLE, {Name, 0}) of
         [{{Name, 0},0}|_] ->
@@ -272,4 +256,32 @@ check_type([?METRIC_HISTOGRAM = Type|Rest], Name) ->
             Type;
         _Other ->
             check_type(Rest, Name)
+    end.
+
+%% @private
+check_type_1(Name, Type) ->
+    %% If retrieved a metric-group-info,
+    %% then it will generate metrics
+    {MetricGroup, Column} = ?sv_schema_and_key(Name),
+    case svc_tbl_metric_group:get(MetricGroup) of
+        {ok, #sv_metric_group{schema_name = Schema,
+                              name = MetricGroup,
+                              window = Window,
+                              callback = Callback}} ->
+            case create_metrics_by_schema(
+                   Schema, MetricGroup, Window, Callback) of
+                ok when Type =/= undefind ->
+                    Type;
+                ok ->
+                    case svc_tbl_column:get(Schema, Column) of
+                        {ok, #sv_column{type = Type}} ->
+                            Type;
+                        Error ->
+                            Error
+                    end;
+                Error ->
+                    Error
+            end;
+        _ ->
+            not_found
     end.

@@ -32,6 +32,9 @@ suite_test_() ->
              folsom:start(),
              mnesia:start(),
              {ok,_Pid} = savanna_commons_sup:start_link(),
+             {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+             {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
+             {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
              ok
      end,
      fun (_) ->
@@ -40,7 +43,7 @@ suite_test_() ->
      end,
      [
       {"test sliding counter-metrics",
-       {timeout, 30, fun counter_metrics_1/0}},
+       {timeout, 120, fun counter_metrics_1/0}},
       {"test sliding histogram_1",
        {timeout, 30, fun histogram_1/0}},
       {"test creating schema",
@@ -61,7 +64,14 @@ counter_metrics_1() ->
     Schema = 'test',
     Key = 'c1',
     Window = 10,
-    savanna_commons:new(?METRIC_COUNTER, Schema, Key, Window, 'svc_nofify_sample'),
+
+    ok = savanna_commons:create_schema(
+           Schema, [#sv_column{name = Key,
+                               type = ?COL_TYPE_COUNTER,
+                               constraint = []}
+                   ]),
+    ok = savanna_commons:create_metrics_by_schema(Schema, Window, 'svc_nofify_sample'),
+
     savanna_commons:notify(Schema, {Key, 128}),
     savanna_commons:notify(Schema, {Key, 256}),
     savanna_commons:notify(Schema, {Key, 384}),
@@ -73,7 +83,17 @@ counter_metrics_1() ->
     {ok, Ret_2} = savanna_commons:get_metric_value(Schema, Key),
     ?assertEqual(0, Ret_2),
 
-    %% savanna_commons:stop(Schema, Key),
+    %% After terminated procs, re-generate a metric and notify a msg to it
+    timer:sleep(Window * 4000),
+    savanna_commons:notify(Schema, {Key, 128}),
+    {ok, Ret_3} = svc_metrics_counter:get_values('sv_test.c1'),
+    ?assertEqual(128, Ret_3),
+
+    mnesia:stop(),
+    mnesia:start(),
+    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
+    {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
     ok.
 
 histogram_1() ->
@@ -108,10 +128,6 @@ histogram_1() ->
 
 create_schema() ->
     SchemaName = 'test_1',
-    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
-    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
-    {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
-
     not_found = svc_tbl_column:all(),
     ok = savanna_commons:create_schema(
            SchemaName, [#sv_column{name = 'col_1',
