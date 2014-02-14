@@ -31,12 +31,12 @@ sample() ->
     %% Create a schema
     SchemaName = 'test_1',
     ok = savanna_commons:create_schema(
-            SchemaName, [#svdb_column{name = 'col_1',
-                                      type = ?COL_TYPE_COUNTER,
-                                      constraint = []},
-                         #svdb_column{name = 'col_2',
-                                      type = ?COL_TYPE_H_UNIFORM,
-                                      constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]}
+            SchemaName, [#sv_column{name = 'col_1',
+                                    type = ?COL_TYPE_COUNTER,
+                                    constraint = []},
+                         #sv_column{name = 'col_2',
+                                    type = ?COL_TYPE_H_UNIFORM,
+                                    constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]}
                         ]),
 
     %% Create a metric by the schema
