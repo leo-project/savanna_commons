@@ -20,19 +20,23 @@
 %%
 %%======================================================================
 -module(svc_metrics_histogram).
+-author('Yosuke Hara').
+
+-behaviour(gen_server).
 
 -include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([start_link/3, start_link/4, start_link/5, start_link/6,
+-export([start_link/7,
          stop/1]).
 
--export([update/2,
+-export([get_status/1,
+         update/2,
          get_values/1,
          get_histogram_statistics/1,
          resize/2,
-         trim/3
+         trim_and_notify/1
         ]).
 
 -export([init/1,
@@ -43,11 +47,15 @@
          code_change/3]).
 
 -record(state, {name :: atom(),
-                sample_type :: sv_histogram_type(),
+                type :: sv_histogram_type(),
                 window = 0  :: pos_integer(),
                 reservoir   :: pos_integer(),
-                server      :: pid(),
-                callback    :: atom() %% see:'svc_notify_behaviour'
+                callback    :: atom(), %% see:'svc_notify_behaviour'
+                server      :: atom(),
+
+                %% after this counter was over threshold of removal proc,
+                %% then the server-proc will be removed
+                counter = 0 :: pos_integer()
                }).
 
 -record(metric, {tags = sets:new() :: set(),
@@ -64,32 +72,22 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
--spec(start_link(atom(), sv_histogram_type(), function()) ->
+-spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(),
+                 float(), function(), atom()) ->
              {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Callback) ->
-    start_link(Name, HistogramType, ?DEF_WINDOW, Callback()).
-
-
--spec(start_link(atom(), sv_histogram_type(), pos_integer(), function()) ->
-             {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window, Callback) ->
-    start_link(Name, HistogramType, Window, ?DEFAULT_SIZE, Callback).
-
--spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(), function()) ->
-             {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window, SampleSize, Callback) ->
-    start_link(Name, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
-
--spec(start_link(atom(), sv_histogram_type(), pos_integer(), pos_integer(), float(), function()) ->
-             {ok, pid()} | {error, any()}).
-start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback) ->
+start_link(Name, HistogramType, Window, SampleSize, Alpha, Callback, Server) ->
     gen_server:start_link({local, Name}, ?MODULE,
-                          [Name, HistogramType, Window, SampleSize, Alpha, Callback], []).
+                          [Name, HistogramType, Window, SampleSize, Alpha, Callback, Server], []).
 
 stop(Name) ->
     gen_server:call(Name, stop).
+
+
+%% @doc Retrieve current status
+-spec(get_status(atom()) ->
+             {ok, list(tuple())}).
+get_status(Name) ->
+    gen_server:call(Name, get_status, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve value
@@ -119,12 +117,11 @@ update(Name, Value) ->
 resize(Name, NewSize) ->
     gen_server:call(Name, {resize, NewSize}, ?DEF_TIMEOUT).
 
-
-%% @doc Remove values from the stats
--spec(trim(atom(), atom(), pos_integer()) ->
+%% @doc Remove oldest values and notify metric with callback-func
+-spec(trim_and_notify(atom()) ->
              ok | {error, any()}).
-trim(Name, Tid, Window) ->
-    gen_server:call(Name, {trim, Tid, Window}, ?DEF_TIMEOUT).
+trim_and_notify(Name) ->
+    gen_server:call(Name, trim_and_notify, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -136,26 +133,28 @@ trim(Name, Tid, Window) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 
-init([Name, ?HISTOGRAM_SLIDE = SampleType, Window,_SampleSize,_Alpha, Callback]) ->
+init([Name, ?HISTOGRAM_SLIDE = SampleType, Window,_SampleSize,_Alpha, Callback, Server]) ->
     Sample = #slide{window = Window},
     Reservoir = Sample#slide.reservoir,
     init_1(Sample, #state{name = Name,
-                          sample_type = SampleType,
+                          type = SampleType,
                           window = Window,
                           reservoir = Reservoir,
-                          callback  = Callback
+                          callback = Callback,
+                          server = Server
                          });
 
-init([Name, ?HISTOGRAM_UNIFORM = SampleType, Window, SampleSize,_Alpha, Callback]) ->
+init([Name, ?HISTOGRAM_UNIFORM = SampleType, Window, SampleSize,_Alpha, Callback, Server]) ->
     Sample = #uniform{size = SampleSize},
     Reservoir = Sample#uniform.reservoir,
     init_1(Sample, #state{name = Name,
-                          sample_type = SampleType,
+                          type = SampleType,
                           window = Window,
                           reservoir = Reservoir,
-                          callback  = Callback
+                          callback = Callback,
+                          server = Server
                          });
-init([Name, ?HISTOGRAM_EXDEC = SampleType, Window, SampleSize, Alpha, Callback]) ->
+init([Name, ?HISTOGRAM_EXDEC = SampleType, Window, SampleSize, Alpha, Callback, Server]) ->
     Now = folsom_utils:now_epoch(),
     Sample = #exdec{start = Now,
                     next  = Now + ?HOURSECS,
@@ -163,25 +162,33 @@ init([Name, ?HISTOGRAM_EXDEC = SampleType, Window, SampleSize, Alpha, Callback])
                     size  = SampleSize},
     Reservoir = Sample#exdec.reservoir,
     init_1(Sample, #state{name = Name,
-                          sample_type = SampleType,
+                          type = SampleType,
                           window = Window,
                           reservoir = Reservoir,
-                          callback  = Callback
+                          callback = Callback,
+                          server = Server
                          }).
 %% @private
 init_1(Sample, #state{name = Name,
-                      sample_type = SampleType,
-                      window = Window,
-                      reservoir = Reservoir} = State) ->
-    Pid = savanna_commons_sup:start_slide_server(?MODULE, Name, Reservoir, Window),
+                      type = SampleType} = State) ->
     Hist = #histogram{type = SampleType, sample = Sample},
     true = ets:insert(?HISTOGRAM_TABLE, {Name, Hist}),
     true = ets:insert(?FOLSOM_TABLE, {Name, #metric{type = histogram}}),
-    {ok, State#state{server = Pid}}.
+    {ok, State}.
 
 
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
+
+
+handle_call(get_status, _From, #state{name = Name,
+                                      type = Type,
+                                      window = Window,
+                                      reservoir = Reservoir,
+                                      callback = Callback} = State) ->
+    Reply = [{'name', Name}, {'type', Type}, {'window', Window},
+             {'reservoir', Reservoir}, {'callback', Callback}],
+    {reply, {ok, Reply}, State};
 
 handle_call(get_values, _From, #state{name = Name} = State) ->
     Hist = get_value(Name),
@@ -205,38 +212,27 @@ handle_call({update, Value}, _From, #state{name = Name} = State) ->
     end,
     {reply, ok, State};
 
-handle_call({resize, NewSize}, _From, #state{server = Pid} = State) ->
-    ok = svc_sample_slide_server:resize(Pid, NewSize),
+handle_call({resize, NewSize}, _From, State) ->
     {reply, ok, State#state{window = NewSize}};
 
-handle_call({trim, Reservoir, Window}, _From, #state{name = Name,
-                                                     sample_type = SampleType,
-                                                     callback = Callback} = State) ->
-    %% Retrieve the current value, then execute the callback-function
-    case is_atom(Callback) of
-        true ->
-            {SchemaName, Key} = ?sv_schema_and_key(Name),
-            CurrentStat = get_current_statistics(Name),
-            catch Callback:notify(SchemaName, {Key, CurrentStat});
-        false ->
-            void
-    end,
+handle_call(trim_and_notify, _From, State) ->
+    NewState = trim_and_notify_1(State),
+    {reply, ok, NewState}.
 
-    %% Remove oldest data
-    try
-        trim_1(SampleType, Name, Reservoir, Window)
-    catch
-        _:Cause ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING},
-                                    {function, "handle_call/3"},
-                                    {line, ?LINE}, {body, Cause}])
-    end,
-    {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+
+%% Function: handle_info(Info, State) -> {noreply, State}          |
+%%                                       {noreply, State, Timeout} |
+%%                                       {stop, Reason, State}
+%% Description: Handling all non call/cast messages
+%% handle_info({_Label, {_From, MRef}, get_modules}, State) ->
+%%     {noreply, State};
+handle_info(timeout, #state{window = Window} = State) ->
+    NewState = trim_and_notify(State),
+    {noreply, NewState, timer:seconds(Window)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -285,6 +281,41 @@ update_1(?HISTOGRAM_EXDEC, Sample, Value) ->
 
 %% @doc Remove oldest values
 %% @private
+trim_and_notify_1(#state{name = Name,
+                         type = SampleType,
+                         reservoir = Reservoir,
+                         window = Window,
+                         callback = Callback,
+                         server = Server,
+                         counter = Counter} = State)->
+    %% Retrieve the current value, then execute the callback-function
+    {MetricGroup, Key} = ?sv_schema_and_key(Name),
+    CurrentStat = get_current_statistics(Name),
+    Max = leo_misc:get_value('max', CurrentStat, 0),
+    Min = leo_misc:get_value('min', CurrentStat, 0),
+
+    case {Max, Min} of
+        {0.0, 0.0} when Counter =< ?SV_THRESHOLD_OF_REMOVAL_PROC ->
+            %% Terminate the server-proc
+            timer:apply_after(100, savanna_commons_sup, stop_slide_server, [[Name, Server]]),
+            State#state{counter = Counter + 1};
+        {0.0, 0.0} ->
+            State#state{counter = Counter + 1};
+        _ ->
+            catch Callback:notify(MetricGroup, {Key, CurrentStat}),
+            try
+                trim_1(SampleType, Name, Reservoir, Window)
+            catch
+                _:Cause ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "trim_1/3"},
+                                            {line, ?LINE}, {body, Cause}])
+            end,
+            State#state{counter = 0}
+    end.
+
+%% @private
 trim_1(?HISTOGRAM_SLIDE,_Name, Reservoir, Window) ->
     folsom_sample_slide:trim(Reservoir, Window);
 trim_1(?HISTOGRAM_UNIFORM, Name, Reservoir,_Window) ->
@@ -297,5 +328,16 @@ trim_1(?HISTOGRAM_UNIFORM, Name, Reservoir,_Window) ->
                                           seed = os:timestamp()}}}),
     ets:delete_all_objects(Reservoir),
     ok;
-trim_1(?HISTOGRAM_EXDEC,_,_,_) ->
+trim_1(?HISTOGRAM_EXDEC, Name,_,_) ->
+    Hist = get_value(Name),
+    Sample = Hist#histogram.sample,
+    Reservoir = Sample#exdec.reservoir,
+    true = ets:insert(?HISTOGRAM_TABLE,
+                      {Name, Hist#histogram{
+                               sample = Sample#exdec{start = 0,
+                                                     next = 0,
+                                                     seed = os:timestamp(),
+                                                     n = 1}
+                              }}),
+    ets:delete_all_objects(Reservoir),
     ok.

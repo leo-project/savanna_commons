@@ -26,6 +26,7 @@
 -type(sv_key()    :: atom()).
 -type(sv_keyval() :: {atom(), any()}).
 -type(sv_values() :: list(tuple())).
+-type(sv_metric_grp() :: atom()).
 
 -define(ERROR_ETS_NOT_AVAILABLE, "ETS is not available").
 -define(ERROR_MNESIA_NOT_START,  "Mnesia is not available").
@@ -47,8 +48,9 @@
 -type(sv_histogram_constraint() :: ?HISTOGRAM_CONS_SAMPLE |
                                    ?HISTOGRAM_CONS_ALPHA).
 
--define(TBL_SCHEMAS, 'sv_schemas').
--define(TBL_COLUMNS, 'sv_columns').
+-define(TBL_SCHEMAS,    'sv_schemas').
+-define(TBL_COLUMNS,    'sv_columns').
+-define(TBL_METRIC_GRP, 'sv_metric_grp').
 
 -define(COL_TYPE_COUNTER,         'counter').
 -define(COL_TYPE_H_UNIFORM,       'histogram_uniform').
@@ -61,19 +63,25 @@
                           ?COL_TYPE_H_EXDEC |
                           ?COL_TYPE_HISTORY).
 
+-define(SV_PREFIX_NAME, "sv_").
+-define(SV_THRESHOLD_OF_REMOVAL_PROC, 3).
+
 %% Macro
 %% @doc Generate a metric-name from a schema-name and a key
--define(sv_metric_name(_Schema, _Key),
-        list_to_atom(lists:append([atom_to_list(_Schema), ".", atom_to_list(_Key)]))).
+-define(sv_metric_name(_MetricGroup, _Key),
+        list_to_atom(lists:append([?SV_PREFIX_NAME,
+                                   atom_to_list(_MetricGroup), ".", atom_to_list(_Key)]))).
 
 %% @doc Retrieve a schema-name and a key from a metric-name
--define(sv_schema_and_key(_MetricName),
+-define(sv_schema_and_key(_Name),
         begin
-            _MetricName_1 = atom_to_list(_MetricName),
-            _Index  = string:chr(_MetricName_1, $.),
-            _Schema = list_to_atom(string:sub_string(_MetricName_1, 1, _Index-1)),
-            _Key    = list_to_atom(string:sub_string(_MetricName_1, _Index + 1)),
-            {_Schema,_Key}
+            _Name_1 = atom_to_list(_Name),
+            _PrefixLen = length(?SV_PREFIX_NAME),
+            _Index  = string:chr(_Name_1, $.),
+
+            _MetricGrp = list_to_atom(string:sub_string(_Name_1, 1 + _PrefixLen, _Index - 1)),
+            _Column    = list_to_atom(string:sub_string(_Name_1, _Index + 1)),
+            {_MetricGrp,_Column}
         end).
 
 
@@ -90,4 +98,13 @@
           type            :: sv_column_type(),
           constraint = [] :: list(),
           created_at      :: pos_integer()
+         }).
+
+-record(sv_metric_group, {
+          id          :: pos_integer(),
+          schema_name :: sv_schema(),
+          name        :: sv_metric_grp(),
+          window = 0  :: pos_integer(),
+          callback    :: atom(),
+          created_at  :: pos_integer() %% see:'svc_notify_behaviour'
          }).

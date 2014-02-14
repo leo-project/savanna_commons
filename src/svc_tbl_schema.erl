@@ -43,7 +43,7 @@
 %%
 create_table(Mode, Nodes) ->
     mnesia:create_table(
-      ?TBL_SCHEMAS,
+      ?TBL_NAME,
       [{Mode, Nodes},
        {type, set},
        {record_name, sv_schema},

@@ -34,8 +34,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/3, start_link/4,
-         stop/1, resize/2]).
+-export([start_link/3,
+         stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,7 +43,6 @@
 
 -record(state, {sample_mod,
                 sample_server_id,
-                reservoir,
                 window}).
 
 -define(DEF_TIMEOUT, 60000).
@@ -53,17 +52,11 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
-start_link(SampleMod, Reservoir, Window) ->
-    start_link(SampleMod, undefined, Reservoir, Window).
-
-start_link(SampleMod, SmpleServerId, Reservoir, Window) ->
-    gen_server:start_link(?MODULE, [SampleMod, SmpleServerId, Reservoir, Window], []).
+start_link(SampleMod, SmpleServerId, Window) ->
+    gen_server:start_link(?MODULE, [SampleMod, SmpleServerId, Window], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
-
-resize(Pid, NewWindow) ->
-    gen_server:call(Pid, {resize, NewWindow}).
 
 
 %%--------------------------------------------------------------------
@@ -74,16 +67,10 @@ resize(Pid, NewWindow) ->
 %%                         ignore               |
 %%                         {stop, Reason}
 %% Description: Initiates the server
-init([SampleMod, SampleServerId, Reservoir, Window]) ->
+init([SampleMod, SampleServerId, Window]) ->
     {ok, #state{sample_mod = SampleMod,
                 sample_server_id = SampleServerId,
-                reservoir = Reservoir,
                 window = Window}, timeout(Window)}.
-
-handle_call({resize, NewWindow}, _From, State) ->
-    NewState = State#state{window = NewWindow},
-    Reply = ok,
-    {reply, Reply, NewState, timeout(NewWindow)};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -96,20 +83,10 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(timeout, State=#state{sample_mod = SampleMod,
-                                  sample_server_id = undefined,
-                                  reservoir = Reservoir,
-                                  window = Window}) ->
-    spawn(fun() ->
-                  catch SampleMod:trim(Reservoir, Window)
-          end),
-    {noreply, State, timeout(Window)};
-
-handle_info(timeout, State=#state{sample_mod = SampleMod,
                                   sample_server_id = SampleSeverId,
-                                  reservoir = Reservoir,
                                   window = Window}) ->
     spawn(fun() ->
-                  catch SampleMod:trim(SampleSeverId, Reservoir, Window)
+                  catch SampleMod:trim_and_notify(SampleSeverId)
           end),
     {noreply, State, timeout(Window)};
 
