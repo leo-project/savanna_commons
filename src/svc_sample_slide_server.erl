@@ -86,6 +86,7 @@ handle_info(timeout, State=#state{sample_mod = SampleMod,
                                   sample_server_id = SampleSeverId,
                                   window = Window}) ->
     spawn(fun() ->
+                  timer:sleep(erlang:phash2(leo_date:clock(), 250)),
                   catch SampleMod:trim_and_notify(SampleSeverId)
           end),
     {noreply, State, timeout(Window)};
