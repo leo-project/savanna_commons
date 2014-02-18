@@ -230,9 +230,6 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %% handle_info({_Label, {_From, MRef}, get_modules}, State) ->
 %%     {noreply, State};
-handle_info(timeout, #state{window = Window} = State) ->
-    NewState = trim_and_notify(State),
-    {noreply, NewState, timer:seconds(Window)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
