@@ -70,7 +70,7 @@ stop(Pid) ->
 init([SampleMod, SampleServerId, Window]) ->
     {ok, #state{sample_mod = SampleMod,
                 sample_server_id = SampleServerId,
-                window = Window}, timeout(Window)}.
+                window = Window}, Window}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -89,7 +89,7 @@ handle_info(timeout, State=#state{sample_mod = SampleMod,
                   timer:sleep(erlang:phash2(leo_date:clock(), 250)),
                   catch SampleMod:trim_and_notify(SampleSeverId)
           end),
-    {noreply, State, timeout(Window)};
+    {noreply, State, Window};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -99,6 +99,3 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-timeout(Window) ->
-    timer:seconds(Window).
