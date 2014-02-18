@@ -42,27 +42,46 @@
 %%
 new(?METRIC_COUNTER, MetricGroup, Key, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_counter', Name, Callback).
+    Ret = savanna_commons_sup:start_child('svc_metrics_counter', Name, Callback),
+    new_1(Ret).
 
 new(?METRIC_COUNTER, MetricGroup, Key, Window, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_counter', Name, Window, Callback);
+    Ret = savanna_commons_sup:start_child('svc_metrics_counter', Name,
+                                          Window, Callback),
+    new_1(Ret);
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Callback).
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+                                          HistogramType, Callback),
+    new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, Callback).
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+                                          HistogramType, Window, Callback),
+    new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, SampleSize, Callback).
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+                                          HistogramType, Window, SampleSize, Callback),
+    new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Alpha, Callback) ->
     Name = ?sv_metric_name(MetricGroup, Key),
-    savanna_commons_sup:start_child('svc_metrics_histogram', Name, HistogramType, Window, SampleSize, Alpha, Callback).
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+                                          HistogramType, Window, SampleSize, Alpha, Callback),
+    new_1(Ret).
+
+%% @private
+new_1(ok) ->
+    ok;
+new_1({error,{already_started,_Pid}}) ->
+    ok;
+new_1(Error) ->
+    Error.
 
 
 %% @doc Stop a process
