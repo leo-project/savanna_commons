@@ -90,7 +90,7 @@ counter_metrics_1() ->
 
     savanna_commons:notify(Schema, {Key, 128}),
     timer:sleep(1000),
-    {ok, Ret_3} = svc_metrics_counter:get_values('sv_test.c1'),
+    {ok, Ret_3} = svc_metric_server:get_values('sv_test.c1'),
     ?assertEqual(128, Ret_3),
 
     mnesia:stop(),
@@ -114,7 +114,7 @@ histogram_1() ->
     savanna_commons:notify(Schema, {Key, 512}),
 
     timer:sleep(1000),
-    Ret = savanna_commons:get_metric_value(Schema, Key),
+    {ok, Ret} = savanna_commons:get_metric_value(Schema, Key),
     ?assertEqual([16,32,64,128,128,256,512], Ret),
 
     ?debugVal('check_1'),
@@ -219,7 +219,6 @@ create_metrics_by_shcema() ->
     {ok, Ret_3} = savanna_commons:get_histogram_statistics(Schema, Key_3),
     {ok, Ret_4} = savanna_commons:get_histogram_statistics(Schema, Key_4),
 
-    ?debugVal(svc_metrics_histogram:get_values('sv_test_1.col_2')),
     ?assertEqual(1280, Ret_1),
     ?assertEqual(true, [] /= Ret_2),
     ?assertEqual(true, [] /= Ret_3),

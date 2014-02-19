@@ -70,7 +70,8 @@
 -ifdef(TEST).
 -define(SV_EXPIRE_TIME, 60). %% 60sec (2min)
 -else.
--define(SV_EXPIRE_TIME, 300). %% 300sec (5min)
+-define(SV_EXPIRE_TIME, 'infinity').
+%% -define(SV_EXPIRE_TIME, 300). %% 300sec (5min)
 -endif.
 
 

@@ -28,13 +28,10 @@
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([get_status/1,
-         get_values/1,
-         update/2,
-         get_histogram_statistics/1,
-         resize/2,
-         trim_and_notify/1
-        ]).
+-export([handle_get_values/1,
+         handle_get_histogram_statistics/1,
+         handle_update/3,
+         trim_and_notify/1]).
 
 -define(DEF_WIDTH,   16).
 -define(DEF_WINDOW,  60).
@@ -45,62 +42,23 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% @doc Retrieve current status
--spec(get_status(atom()) ->
-             {ok, list(tuple())}).
-get_status(ServerId) ->
-    svc_metric_server:get_status(ServerId).
-
-
-%% @doc Retrieve value
--spec(get_values(sv_metric()) ->
-             {ok, list()}).
-get_values(ServerId) ->
-    Hist  = get_value(ServerId),
+%% @doc Retrive values
+handle_get_values(Hist) ->
     get_values_1(Hist#histogram.type, Hist#histogram.sample).
 
-%% @doc Retrieve values
-%% @private
-get_values_1(?HISTOGRAM_SLIDE, Sample) ->
-    folsom_sample_slide:get_values(Sample);
-get_values_1(?HISTOGRAM_UNIFORM, Sample) ->
-    folsom_sample_uniform:get_values(Sample);
-get_values_1(?HISTOGRAM_EXDEC, Sample) ->
-    folsom_sample_exdec:get_values(Sample).
 
+%% @doc Retrive histogram-stats
+handle_get_histogram_statistics(Hist) ->
+    get_current_statistics(Hist).
 
-%% @doc Retrieve histogram-stat
--spec(get_histogram_statistics(sv_metric()) ->
-             {ok, list()} | not_found | {error, any()}).
-get_histogram_statistics(ServerId) ->
-    CurrentStat = get_current_statistics(ServerId),
-    {ok, CurrentStat}.
-
-
-%% @doc Put a value
--spec(update(sv_metric(), any()) ->
-             ok | {error, any()}).
-update(ServerId, Value) ->
-    Hist = get_value(ServerId),
-    Sample = Hist#histogram.sample,
-    Callback = fun update_1/3,
-    svc_metric_server:update(ServerId, Value, Hist, Sample, Callback).
 
 %% @doc Insert the value
-%% @private
-update_1(?HISTOGRAM_SLIDE, Sample, Value) ->
+handle_update(?HISTOGRAM_SLIDE, Sample, Value) ->
     folsom_sample_slide:update(Sample, Value);
-update_1(?HISTOGRAM_UNIFORM, Sample, Value) ->
+handle_update(?HISTOGRAM_UNIFORM, Sample, Value) ->
     folsom_sample_uniform:update(Sample, Value);
-update_1(?HISTOGRAM_EXDEC, Sample, Value) ->
+handle_update(?HISTOGRAM_EXDEC, Sample, Value) ->
     folsom_sample_exdec:update(Sample, Value).
-
-
-%% @doc Resize the metric
--spec(resize(sv_metric(), pos_integer()) ->
-             ok | {error, any()}).
-resize(ServerId, NewSize) ->
-    svc_metric_server:resize(ServerId, NewSize).
 
 
 %% @doc Remove oldest values and notify metric with callback-func
@@ -111,7 +69,8 @@ trim_and_notify(#sv_metric_state{id = ServerId,
                                  notify_to = Callback} = State)->
     %% Retrieve the current value, then execute the callback-function
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
-    CurrentStat = get_current_statistics(ServerId),
+    Hist = get_value(ServerId),
+    CurrentStat = get_current_statistics(Hist),
 
     catch Callback:notify(MetricGroup, {Key, CurrentStat}),
     try
@@ -153,6 +112,7 @@ trim_1(?HISTOGRAM_EXDEC, ServerId) ->
     ets:delete_all_objects(Sample#exdec.reservoir),
     ok.
 
+
 %%--------------------------------------------------------------------
 %%% INNER FUNCTIONS
 %%--------------------------------------------------------------------
@@ -162,9 +122,18 @@ get_value(ServerId) ->
     Value.
 
 
+%% @doc Retrieve values
+%% @private
+get_values_1(?HISTOGRAM_SLIDE, Sample) ->
+    folsom_sample_slide:get_values(Sample);
+get_values_1(?HISTOGRAM_UNIFORM, Sample) ->
+    folsom_sample_uniform:get_values(Sample);
+get_values_1(?HISTOGRAM_EXDEC, Sample) ->
+    folsom_sample_exdec:get_values(Sample).
+
+
 %% @doc Retrieve the current statistics
 %% @private
-get_current_statistics(ServerId) ->
-    Hist = get_value(ServerId),
+get_current_statistics(Hist) ->
     Values = get_values_1(Hist#histogram.type, Hist#histogram.sample),
     bear:get_statistics(Values).

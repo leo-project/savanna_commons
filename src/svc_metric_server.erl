@@ -33,8 +33,9 @@
          stop/1]).
 
 -export([get_status/1,
-         update/2, update/5,
-         resize/2]).
+         get_values/1,
+         get_histogram_statistics/1,
+         update/2, resize/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -133,15 +134,25 @@ get_status(ServerId) ->
     gen_server:call(ServerId, get_status, ?DEF_TIMEOUT).
 
 
+%% @doc Retrieve a metric
+-spec(get_values(sv_metric()) ->
+             ok | {error, any()}).
+get_values(ServerId) ->
+    gen_server:call(ServerId, get_values, ?DEF_TIMEOUT).
+
+
+%% @doc Retrieve histogram-statistics
+-spec(get_histogram_statistics(sv_metric()) ->
+             ok | {error, any()}).
+get_histogram_statistics(ServerId) ->
+    gen_server:call(ServerId, get_histogram_statistics, ?DEF_TIMEOUT).
+
+
 %% @doc Put a value
 -spec(update(sv_metric(), any()) ->
              ok | {error, any()}).
 update(ServerId, Value) ->
     gen_server:call(ServerId, {update, Value}, ?DEF_TIMEOUT).
-
-update(ServerId, Value, Histogram, Sample, Callback) ->
-    gen_server:call(ServerId, {update, Value, Histogram,
-                               Sample, Callback}, ?DEF_TIMEOUT).
 
 
 %% @doc Resize the metric
@@ -163,15 +174,43 @@ init([#sv_metric_state{window = Window} = State]) ->
     {ok, State, Window}.
 
 
+%% GET status
 handle_call(get_status, _From, #sv_metric_state{id        = Id,
                                                 type      = Type,
                                                 window    = Window,
                                                 notify_to = Callback} = State) ->
-    Reply = [{'id', Id}, {'type', Type}, {'window', Window},
-             {'notify_to', Callback}],
+    Ret = [{'id', Id}, {'type', Type}, {'window', Window},
+           {'notify_to', Callback}],
     NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, {ok, Reply}, NewState, Window};
+    {reply, {ok, Ret}, NewState, Window};
 
+
+%% GET values
+handle_call(get_values, _From, #sv_metric_state{id = ServerId,
+                                                type = ?METRIC_COUNTER,
+                                                window = Window} = State) ->
+    Count = folsom_metrics_counter:get_value(ServerId),
+    NewState = State#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Count}, NewState, Window};
+
+handle_call(get_values, _From, #sv_metric_state{id = ServerId,
+                                                sample_mod = Mod,
+                                                window = Window} = State) ->
+    [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
+    Ret = Mod:handle_get_values(Hist),
+    NewState = State#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Ret}, NewState, Window};
+
+%% GET HISTO-STATS
+handle_call(get_histogram_statistics, _From, #sv_metric_state{id = ServerId,
+                                                              sample_mod = Mod,
+                                                              window = Window} = State) ->
+    [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
+    Ret = Mod:handle_get_histogram_statistics(Hist),
+    NewState = State#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Ret}, NewState, Window};
+
+%% Update a value
 handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      type = ?METRIC_COUNTER,
                                                      window = Window} = State) ->
@@ -179,9 +218,12 @@ handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
     NewState = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, ok, NewState, Window};
 
-handle_call({update, Value, Hist, Sample, Callback}, _From, #sv_metric_state{id = ServerId,
-                                                                             window = Window} = State) ->
-    case Callback(Hist#histogram.type, Hist#histogram.sample, Value) of
+handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
+                                                     sample_mod = Mod,
+                                                     window = Window} = State) ->
+    [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
+    Sample = Hist#histogram.sample,
+    case Mod:handle_update(Hist#histogram.type, Hist#histogram.sample, Value) of
         Sample ->
             void;
         NewSample ->
@@ -206,17 +248,20 @@ handle_cast(stop, State) ->
 %% handle_info({_Label, {_From, MRef}, get_modules}, State) ->
 %%     {noreply, State};
 handle_info(timeout, #sv_metric_state{id = ServerId,
-                                      sample_mod = SampleMod,
                                       window = Window,
                                       updated_at = UpdatedAt} = State) ->
-    Diff = leo_date:now() - UpdatedAt,
-    case (Diff >= ?SV_EXPIRE_TIME) of
-        true ->
-            timer:apply_after(
-              100, savanna_commons_sup, stop_slide_server, [[ServerId]]);
-        false ->
-            timer:sleep(erlang:phash2(leo_date:clock(), 250)),
-            catch SampleMod:trim_and_notify(State)
+    case ?SV_EXPIRE_TIME of
+        'infinity' ->
+            trim_and_notify_1(State);
+        ExpireTime ->
+            Diff = leo_date:now() - UpdatedAt,
+            case (Diff >= ExpireTime) of
+                true ->
+                    timer:apply_after(
+                      100, savanna_commons_sup, stop_slide_server, [[ServerId]]);
+                false ->
+                    trim_and_notify_1(State)
+            end
     end,
     {noreply, State, Window};
 
@@ -242,3 +287,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% INNER FUNCTIONS
 %%--------------------------------------------------------------------
+%% @private
+trim_and_notify_1(#sv_metric_state{sample_mod = Mod} = State) ->
+    timer:sleep(erlang:phash2(leo_date:clock(), 250)),
+    catch Mod:trim_and_notify(State).

@@ -27,9 +27,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([get_status/1,
-         get_values/1,
-         update/2,
+-export([handle_update/3,
          trim_and_notify/1
         ]).
 
@@ -37,26 +35,9 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% @doc Retrieve current status
--spec(get_status(atom()) ->
-             {ok, list(tuple())}).
-get_status(ServerId) ->
-    svc_metric_server:get_status(ServerId).
-
-
-%% @doc Retrieve current values
--spec(get_values(atom()) ->
-             {ok, tuple()} | {error, any()}).
-get_values(ServerId) ->
-    Count = folsom_metrics_counter:get_value(ServerId),
-    {ok, Count}.
-
-
-%% @doc Update a value
--spec(update(atom(), number()) ->
-             ok | {error, any()}).
-update(ServerId, Value) ->
-    svc_metric_server:update(ServerId, Value).
+%% @doc Update a value to folsom's ets (callback)
+handle_update(_,_,_) ->
+    ok.
 
 
 %% @doc Remove oldest values and notify metric with callback-func

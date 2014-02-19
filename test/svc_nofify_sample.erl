@@ -28,5 +28,5 @@
 -export([notify/2]).
 
 notify(_MetricGroup, {_Key, _Values}) ->
-    %% ?debugVal({MetricGroup, {Key, Values}}),
+    ?debugVal({_MetricGroup, {_Key, _Values}}),
     ok.
