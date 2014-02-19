@@ -188,16 +188,21 @@ create_metrics_by_schema_1(_,_,_,_) ->
 -spec(notify(sv_metric_grp(), sv_keyval()) ->
              ok | {error, any()}).
 notify(MetricGroup, {Key, Event}) ->
+    notify(MetricGroup, {Key, Event}, 0).
+
+notify(_,_,3) ->
+    {error, "Could not access the metric-server"};
+notify(MetricGroup, {Key, Event}, Times) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),
     case catch svc_metric_server:update(ServerId, Event) of
         ok ->
             ok;
         _ ->
-            check_type(ServerId),
+            _ = check_type(ServerId),
             case whereis(ServerId) of
                 undefined -> {error, undefined};
                 _ ->
-                    notify(MetricGroup, {Key, Event})
+                    notify(MetricGroup, {Key, Event}, Times + 1)
             end
     end.
 
@@ -212,7 +217,7 @@ get_metric_value(MetricGroup, Key) ->
         {ok, Value} ->
             {ok, Value};
         _ ->
-            check_type(ServerId),
+            _ = check_type(ServerId),
             not_found
     end.
 
@@ -225,7 +230,7 @@ get_histogram_statistics(MetricGroup, Key) ->
         {ok, Value} ->
             {ok, Value};
         _ ->
-            check_type(ServerId),
+            _ = check_type(ServerId),
             not_found
     end.
 
