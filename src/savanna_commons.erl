@@ -27,7 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, new/5, new/6, new/7, new/8,
-         stop/2,
          create_schema/2,
          create_metrics_by_schema/3,
          create_metrics_by_schema/4,
@@ -84,17 +83,17 @@ new_1(Error) ->
     Error.
 
 
-%% @doc Stop a process
-stop(MetricGroup, Key) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    case check_type(Name) of
-        ?METRIC_COUNTER ->
-            svc_metrics_counter:stop(Name);
-        ?METRIC_HISTOGRAM ->
-            svc_metrics_histogram:stop(Name);
-        _ ->
-            ok
-    end.
+%% %% @doc Stop a process
+%% stop(MetricGroup, Key) ->
+%%     Name = ?sv_metric_name(MetricGroup, Key),
+%%     case check_type(Name) of
+%%         ?METRIC_COUNTER ->
+%%             svc_metrics_counter:stop(Name);
+%%         ?METRIC_HISTOGRAM ->
+%%             svc_metrics_histogram:stop(Name);
+%%         _ ->
+%%             ok
+%%     end.
 
 
 %% doc Create a new metrics or histgram from the schema
@@ -207,7 +206,7 @@ notify(MetricGroup, {Key, Event}) ->
 
 %% @private
 notify(?METRIC_COUNTER, Name, Event) ->
-    folsom_metrics:notify({Name, {inc, Event}});
+    svc_metrics_counter:update(Name, Event);
 notify(?METRIC_HISTOGRAM, Name, Event) ->
     svc_metrics_histogram:update(Name, Event);
 notify(_,_,_) ->

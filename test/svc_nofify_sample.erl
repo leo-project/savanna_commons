@@ -27,6 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/2]).
 
-notify(MetricGroup, {Key, Values}) ->
-    ?debugVal({MetricGroup, {Key, Values}}),
+notify(_MetricGroup, {_Key, _Values}) ->
+    %% ?debugVal({MetricGroup, {Key, Values}}),
     ok.

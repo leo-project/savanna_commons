@@ -52,18 +52,13 @@ start_link() ->
 start_child('svc_metrics_counter' = Mod, ServerId, Callback) ->
     start_child(Mod, ServerId, ?DEF_WINDOW, Callback).
 start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
-    case start_slide_server(Mod, ServerId, Window) of
-        {ok, Server} ->
-            ChildSpec = {ServerId,
-                         {Mod, start_link, [ServerId, Window, Callback, Server]},
-                         temporary, 2000, worker, [Mod]},
+    ChildSpec = {ServerId,
+                 {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_COUNTER, Window, Callback]},
+                 temporary, 2000, worker, [svc_metric_server]},
 
-            case supervisor:start_child(?MODULE, ChildSpec) of
-                {ok,_Pid} ->
-                    ok;
-                {error, Cause} ->
-                    {error, Cause}
-            end;
+    case supervisor:start_child(?MODULE, ChildSpec) of
+        {ok,_Pid} ->
+            ok;
         {error, Cause} ->
             {error, Cause}
     end;
@@ -75,34 +70,14 @@ start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, Call
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, SampleSize, Callback) ->
     start_child(Mod, ServerId, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window,  SampleSize, Alpha, Callback) ->
-    case start_slide_server(Mod, ServerId, Window) of
-        {ok, Server} ->
-            ChildSpec = {ServerId,
-                         {Mod, start_link, [ServerId, HistogramType, Window,
-                                            SampleSize, Alpha, Callback, Server]},
-                         temporary, 2000, worker, [Mod]},
-
-            case supervisor:start_child(?MODULE, ChildSpec) of
-                {ok,_Pid} ->
-                    ok;
-                {error, Cause} ->
-                    {error, Cause}
-            end;
-        {error, Cause} ->
-            {error, Cause}
-    end.
-
-
-%% @private
-start_slide_server(SampleMod, ServerId, Window) ->
-    Id = list_to_atom(lists:append([atom_to_list(ServerId),"_notifier"])),
-    ChildSpec = {Id,
-                 {svc_sample_slide_server, start_link, [SampleMod, ServerId, Window]},
-                 temporary, 2000, worker, [svc_sample_slide_server]},
+    ChildSpec = {ServerId,
+                 {svc_metric_server, start_link, [ServerId, Mod, HistogramType, Window,
+                                                  SampleSize, Alpha, Callback]},
+                 temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
         {ok,_Pid} ->
-            {ok, Id};
+            ok;
         {error, Cause} ->
             {error, Cause}
     end.
