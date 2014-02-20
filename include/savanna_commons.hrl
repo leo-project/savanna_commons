@@ -101,7 +101,8 @@
                           window      :: pos_integer(),
                           notify_to   :: atom(),
                           expire_time :: pos_integer(),
-                          updated_at  :: pos_integer()
+                          updated_at  :: pos_integer(),
+                          trimed_at   :: pos_integer()
                          }).
 
 -record(sv_schema, {

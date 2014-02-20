@@ -65,9 +65,7 @@ start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback) 
                                                                         sample_mod  = SampleMod,
                                                                         type        = SampleType,
                                                                         window      = Window,
-                                                                        notify_to   = Callback,
-                                                                        expire_time = ?SV_EXPIRE_TIME,
-                                                                        updated_at  = leo_date:now()
+                                                                        notify_to   = Callback
                                                                        }], []).
 
 -spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
@@ -81,8 +79,7 @@ start_link(ServerId, SampleMod, ?HISTOGRAM_SLIDE = SampleType,
                                           type        = SampleType,
                                           window      = Window,
                                           notify_to   = Callback,
-                                          expire_time = ?SV_EXPIRE_TIME,
-                                          updated_at  = leo_date:now()
+                                          expire_time = ?SV_EXPIRE_TIME
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_UNIFORM = SampleType,
            Window, SampleSize,_Alpha, Callback) ->
@@ -92,8 +89,7 @@ start_link(ServerId, SampleMod, ?HISTOGRAM_UNIFORM = SampleType,
                                           type        = SampleType,
                                           window      = Window,
                                           notify_to   = Callback,
-                                          expire_time = ?SV_EXPIRE_TIME,
-                                          updated_at  = leo_date:now()
+                                          expire_time = ?SV_EXPIRE_TIME
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
            Window, SampleSize, Alpha, Callback) ->
@@ -107,8 +103,7 @@ start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
                                           type        = SampleType,
                                           window      = Window,
                                           notify_to   = Callback,
-                                          expire_time = ?SV_EXPIRE_TIME,
-                                          updated_at  = leo_date:now()
+                                          expire_time = ?SV_EXPIRE_TIME
                                          }).
 
 %% @private
@@ -171,7 +166,9 @@ resize(ServerId, NewSize) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 init([#sv_metric_state{window = Window} = State]) ->
-    {ok, State, Window}.
+    Now = leo_date:now(),
+    {ok, State#sv_metric_state{updated_at = Now,
+                               trimed_at  = Now}, Window}.
 
 
 %% GET status
@@ -181,8 +178,10 @@ handle_call(get_status, _From, #sv_metric_state{id        = Id,
                                                 notify_to = Callback} = State) ->
     Ret = [{'id', Id}, {'type', Type}, {'window', Window},
            {'notify_to', Callback}],
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, {ok, Ret}, NewState, Window};
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Ret}, State_2, Window};
 
 
 %% GET values
@@ -190,16 +189,20 @@ handle_call(get_values, _From, #sv_metric_state{id = ServerId,
                                                 type = ?METRIC_COUNTER,
                                                 window = Window} = State) ->
     Count = folsom_metrics_counter:get_value(ServerId),
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, {ok, Count}, NewState, Window};
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Count}, State_2, Window};
 
 handle_call(get_values, _From, #sv_metric_state{id = ServerId,
                                                 sample_mod = Mod,
                                                 window = Window} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
     Ret = Mod:handle_get_values(Hist),
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, {ok, Ret}, NewState, Window};
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Ret}, State_2, Window};
 
 %% GET HISTO-STATS
 handle_call(get_histogram_statistics, _From, #sv_metric_state{id = ServerId,
@@ -207,16 +210,20 @@ handle_call(get_histogram_statistics, _From, #sv_metric_state{id = ServerId,
                                                               window = Window} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
     Ret = Mod:handle_get_histogram_statistics(Hist),
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, {ok, Ret}, NewState, Window};
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Ret}, State_2, Window};
 
 %% Update a value
 handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      type = ?METRIC_COUNTER,
                                                      window = Window} = State) ->
     folsom_metrics:notify({ServerId, {inc, Value}}),
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, ok, NewState, Window};
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, ok, State_2, Window};
 
 handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      sample_mod = Mod,
@@ -230,8 +237,10 @@ handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
             true = ets:insert(?HISTOGRAM_TABLE,
                               {ServerId, Hist#histogram{sample = NewSample}})
     end,
-    NewState = State#sv_metric_state{updated_at = leo_date:now()},
-    {reply, ok, NewState, Window}.
+
+    State_1 = judge_trim_and_notify(State),
+    State_2 = State_1#sv_metric_state{updated_at = leo_date:now()},
+    {reply, ok, State_2, Window}.
 
 
 %% Function: handle_cast(Msg, State) -> {noreply, State}          |
@@ -250,11 +259,12 @@ handle_cast(stop, State) ->
 handle_info(timeout, #sv_metric_state{id = ServerId,
                                       window = Window,
                                       updated_at = UpdatedAt} = State) ->
+    Now = leo_date:now(),
     case ?SV_EXPIRE_TIME of
         'infinity' ->
             trim_and_notify_1(State);
         ExpireTime ->
-            Diff = leo_date:now() - UpdatedAt,
+            Diff = Now - UpdatedAt,
             case (Diff >= ExpireTime) of
                 true ->
                     timer:apply_after(
@@ -263,10 +273,10 @@ handle_info(timeout, #sv_metric_state{id = ServerId,
                     trim_and_notify_1(State)
             end
     end,
-    {noreply, State, Window};
+    {noreply, State#sv_metric_state{trimed_at = Now}, Window};
 
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info(_Info, #sv_metric_state{window = Window} = State) ->
+    {noreply, State, Window}.
 
 
 %% Function: terminate(Reason, State) -> void()
@@ -288,6 +298,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%% INNER FUNCTIONS
 %%--------------------------------------------------------------------
 %% @private
+judge_trim_and_notify(#sv_metric_state{window = Window,
+                                       trimed_at = TrimedAt} = State) ->
+    Now  = leo_date:now(),
+    Diff = Now - TrimedAt,
+
+    case (Diff >= erlang:round(Window/1000)) of
+        true ->
+            ok = trim_and_notify_1(State),
+            State#sv_metric_state{trimed_at = Now};
+        false ->
+            State
+    end.
+
+
+%% @private
 trim_and_notify_1(#sv_metric_state{sample_mod = Mod} = State) ->
-    timer:sleep(erlang:phash2(leo_date:clock(), 250)),
-    catch Mod:trim_and_notify(State).
+    spawn(fun() ->
+                  timer:sleep(erlang:phash2(leo_date:clock(), 250)),
+                  catch Mod:trim_and_notify(State)
+          end),
+    ok.
