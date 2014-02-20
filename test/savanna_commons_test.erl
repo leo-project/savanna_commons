@@ -63,7 +63,7 @@ suite_test_() ->
 counter_metrics_1() ->
     Schema = 'test',
     Key = 'c1',
-    Window = timer:seconds(10),
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [#sv_column{name = Key,
@@ -103,7 +103,7 @@ counter_metrics_1() ->
 histogram_1() ->
     Schema = 'test',
     Key = 'h1',
-    Window = timer:seconds(10),
+    Window = 10,
     savanna_commons:new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, Schema, Key, Window, 'svc_nofify_sample'),
     savanna_commons:notify(Schema, {Key,  16}),
     savanna_commons:notify(Schema, {Key,  32}),
@@ -160,7 +160,7 @@ create_schema() ->
 
 create_metrics_by_shcema() ->
     Schema = 'test_1',
-    Window = timer:seconds(10),
+    Window = 10,
     ok = savanna_commons:create_metrics_by_schema(Schema, Window, 'svc_nofify_sample'),
     Key_1 = 'col_1',
     savanna_commons:notify(Schema, {Key_1, 128}),
@@ -232,7 +232,7 @@ create_metrics_by_shcema() ->
 counter_metrics_2() ->
     Schema = 'test_counter',
     Key = 'col_1',
-    Window = timer:seconds(30),
+    Window = 30,
     ok = savanna_commons:create_schema(
            Schema, [#sv_column{name = Key,
                                type = ?COL_TYPE_COUNTER,
@@ -256,7 +256,7 @@ inspect_1(Schema, Key, _, EndTime) ->
 histogram_2() ->
     Schema = 'test_histogram_1',
     Key = 'h1',
-    Window = timer:seconds(10),
+    Window = 10,
     SampleSize = 3000,
     savanna_commons:new(?METRIC_HISTOGRAM,
                         ?HISTOGRAM_SLIDE,
@@ -272,7 +272,7 @@ histogram_2() ->
 histogram_3() ->
     Schema = 'test_histogram_2',
     Key = 'h1',
-    Window = timer:seconds(30),
+    Window = 30,
     SampleSize = 3000,
     savanna_commons:new(?METRIC_HISTOGRAM,
                         ?HISTOGRAM_UNIFORM,
@@ -287,7 +287,7 @@ histogram_3() ->
 histogram_4() ->
     Schema = 'test_histogram_3',
     Key = 'h1',
-    Window = timer:seconds(30),
+    Window = 30,
     SampleSize = 3000,
     savanna_commons:new(?METRIC_HISTOGRAM,
                         ?HISTOGRAM_EXDEC,
