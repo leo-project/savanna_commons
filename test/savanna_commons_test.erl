@@ -135,7 +135,7 @@ histogram_1() ->
 
 create_schema() ->
     SchemaName = 'test_1',
-    not_found = svc_tbl_column:all(),
+    %% not_found = svc_tbl_column:all(),
     ok = savanna_commons:create_schema(
            SchemaName, [#sv_column{name = 'col_1',
                                    type = ?COL_TYPE_COUNTER,
