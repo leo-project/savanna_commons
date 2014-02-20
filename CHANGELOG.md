@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.4.3 (Feb 20, 2014)
+
+* Improved the performance
+
 ## 0.4.2 (Feb 18, 2014)
 
 * Fixed bugs and improvements
