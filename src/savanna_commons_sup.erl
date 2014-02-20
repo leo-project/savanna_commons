@@ -49,60 +49,51 @@ start_link() ->
 
 %% @doc Start children
 %%
+-spec(start_child('svc_metrics_counter', atom(), atom()) ->
+             ok | {error, any()}).
 start_child('svc_metrics_counter' = Mod, ServerId, Callback) ->
     start_child(Mod, ServerId, ?DEF_WINDOW, Callback).
-start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
-    case start_slide_server(Mod, ServerId, Window) of
-        {ok, Server} ->
-            ChildSpec = {ServerId,
-                         {Mod, start_link, [ServerId, Window, Callback, Server]},
-                         temporary, 2000, worker, [Mod]},
 
-            case supervisor:start_child(?MODULE, ChildSpec) of
-                {ok,_Pid} ->
-                    ok;
-                {error, Cause} ->
-                    {error, Cause}
-            end;
+-spec(start_child('svc_metrics_counter'|'svc_metrics_histogram', atom(),
+                  pos_integer()|sv_histogram_type(), atom()) ->
+             ok | {error, any()}).
+start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
+    ChildSpec = {ServerId,
+                 {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_COUNTER,
+                                                  timer:seconds(Window), Callback]},
+                 temporary, 2000, worker, [svc_metric_server]},
+
+    case supervisor:start_child(?MODULE, ChildSpec) of
+        {ok,_Pid} ->
+            ok;
         {error, Cause} ->
             {error, Cause}
     end;
 
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Callback) ->
     start_child(Mod, ServerId, HistogramType, ?DEF_WINDOW, Callback).
+
+-spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), atom()) ->
+             ok | {error, any()}).
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, Callback) ->
     start_child(Mod, ServerId, HistogramType, Window, ?DEFAULT_SIZE, Callback).
+
+-spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), pos_integer(), atom()) ->
+             ok | {error, any()}).
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, SampleSize, Callback) ->
     start_child(Mod, ServerId, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
+
+-spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), pos_integer(), float(), atom()) ->
+             ok | {error, any()}).
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window,  SampleSize, Alpha, Callback) ->
-    case start_slide_server(Mod, ServerId, Window) of
-        {ok, Server} ->
-            ChildSpec = {ServerId,
-                         {Mod, start_link, [ServerId, HistogramType, Window,
-                                            SampleSize, Alpha, Callback, Server]},
-                         temporary, 2000, worker, [Mod]},
-
-            case supervisor:start_child(?MODULE, ChildSpec) of
-                {ok,_Pid} ->
-                    ok;
-                {error, Cause} ->
-                    {error, Cause}
-            end;
-        {error, Cause} ->
-            {error, Cause}
-    end.
-
-
-%% @private
-start_slide_server(SampleMod, ServerId, Window) ->
-    Id = list_to_atom(lists:append([atom_to_list(ServerId),"_notifier"])),
-    ChildSpec = {Id,
-                 {svc_sample_slide_server, start_link, [SampleMod, ServerId, Window]},
-                 temporary, 2000, worker, [svc_sample_slide_server]},
+    ChildSpec = {ServerId,
+                 {svc_metric_server, start_link, [ServerId, Mod, HistogramType,
+                                                  timer:seconds(Window), SampleSize, Alpha, Callback]},
+                 temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
         {ok,_Pid} ->
-            {ok, Id};
+            ok;
         {error, Cause} ->
             {error, Cause}
     end.

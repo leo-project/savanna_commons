@@ -27,7 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, new/5, new/6, new/7, new/8,
-         stop/2,
          create_schema/2,
          create_metrics_by_schema/3,
          create_metrics_by_schema/4,
@@ -41,37 +40,37 @@
 %% @doc Create a new metrics or histgram
 %%
 new(?METRIC_COUNTER, MetricGroup, Key, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_counter', Name, Callback),
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId, Callback),
     new_1(Ret).
 
 new(?METRIC_COUNTER, MetricGroup, Key, Window, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_counter', Name,
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId,
                                           Window, Callback),
     new_1(Ret);
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
                                           HistogramType, Callback),
     new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
                                           HistogramType, Window, Callback),
     new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
                                           HistogramType, Window, SampleSize, Callback),
     new_1(Ret).
 
 new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Alpha, Callback) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', Name,
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
                                           HistogramType, Window, SampleSize, Alpha, Callback),
     new_1(Ret).
 
@@ -82,19 +81,6 @@ new_1({error,{already_started,_Pid}}) ->
     ok;
 new_1(Error) ->
     Error.
-
-
-%% @doc Stop a process
-stop(MetricGroup, Key) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    case check_type(Name) of
-        ?METRIC_COUNTER ->
-            svc_metrics_counter:stop(Name);
-        ?METRIC_HISTOGRAM ->
-            svc_metrics_histogram:stop(Name);
-        _ ->
-            ok
-    end.
 
 
 %% doc Create a new metrics or histgram from the schema
@@ -202,16 +188,23 @@ create_metrics_by_schema_1(_,_,_,_) ->
 -spec(notify(sv_metric_grp(), sv_keyval()) ->
              ok | {error, any()}).
 notify(MetricGroup, {Key, Event}) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    notify(check_type(Name), Name, Event).
+    notify(MetricGroup, {Key, Event}, 0).
 
-%% @private
-notify(?METRIC_COUNTER, Name, Event) ->
-    folsom_metrics:notify({Name, {inc, Event}});
-notify(?METRIC_HISTOGRAM, Name, Event) ->
-    svc_metrics_histogram:update(Name, Event);
-notify(_,_,_) ->
-    {error, invalid_args}.
+notify(_,_,3) ->
+    {error, "Could not access the metric-server"};
+notify(MetricGroup, {Key, Event}, Times) ->
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    case catch svc_metric_server:update(ServerId, Event) of
+        ok ->
+            ok;
+        _ ->
+            _ = check_type(ServerId),
+            case whereis(ServerId) of
+                undefined -> {error, undefined};
+                _ ->
+                    notify(MetricGroup, {Key, Event}, Times + 1)
+            end
+    end.
 
 
 %% @doc Retrieve a metric value
@@ -219,26 +212,25 @@ notify(_,_,_) ->
 -spec(get_metric_value(sv_metric_grp(), atom()) ->
              {ok, any()} | {error, any()}).
 get_metric_value(MetricGroup, Key) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    get_metric_value_1(check_type(Name), Name).
-
-%% @private
-get_metric_value_1(?METRIC_COUNTER, Name) ->
-    svc_metrics_counter:get_values(Name);
-get_metric_value_1(?METRIC_HISTOGRAM, Name) ->
-    svc_metrics_histogram:get_values(Name);
-get_metric_value_1(_,_) ->
-    {error, invalid_args}.
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    case catch svc_metric_server:get_values(ServerId) of
+        {ok, Value} ->
+            {ok, Value};
+        _ ->
+            _ = check_type(ServerId),
+            not_found
+    end.
 
 
 %% @doc Retrieve a historgram statistics
 %%
 get_histogram_statistics(MetricGroup, Key) ->
-    Name = ?sv_metric_name(MetricGroup, Key),
-    case check_type(Name) of
-        ?METRIC_HISTOGRAM ->
-            svc_metrics_histogram:get_histogram_statistics(Name);
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    case catch svc_metric_server:get_histogram_statistics(ServerId) of
+        {ok, Value} ->
+            {ok, Value};
         _ ->
+            _ = check_type(ServerId),
             not_found
     end.
 
@@ -247,41 +239,41 @@ get_histogram_statistics(MetricGroup, Key) ->
 %% Inner Functions
 %% ===================================================================
 %% @private
-check_type(Name) ->
-    case check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], Name) of
+check_type(ServerId) ->
+    case check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], ServerId) of
         not_found ->
-            check_type_1(Name, undefined);
+            check_type_1(ServerId, undefined);
         Type ->
-            case whereis(Name) of
+            case whereis(ServerId) of
                 undefined ->
-                    check_type_1(Name, Type);
+                    check_type_1(ServerId, Type);
                 _Pid ->
                     Type
             end
     end.
 
-check_type([],_Name) ->
+check_type([],_ServerId) ->
     not_found;
-check_type([?METRIC_COUNTER = Type|Rest], Name) ->
-    case ets:lookup(?COUNTER_TABLE, {Name, 0}) of
-        [{{Name, 0},0}|_] ->
+check_type([?METRIC_COUNTER = Type|Rest], ServerId) ->
+    case ets:lookup(?COUNTER_TABLE, {ServerId, 0}) of
+        [{{ServerId, 0},0}|_] ->
             Type;
         _ ->
-            check_type(Rest, Name)
+            check_type(Rest, ServerId)
     end;
-check_type([?METRIC_HISTOGRAM = Type|Rest], Name) ->
-    case ets:lookup(?HISTOGRAM_TABLE, Name) of
-        [{Name,{histogram,_,_}}|_] ->
+check_type([?METRIC_HISTOGRAM = Type|Rest], ServerId) ->
+    case ets:lookup(?HISTOGRAM_TABLE, ServerId) of
+        [{ServerId,{histogram,_,_}}|_] ->
             Type;
         _Other ->
-            check_type(Rest, Name)
+            check_type(Rest, ServerId)
     end.
 
 %% @private
-check_type_1(Name, Type) ->
+check_type_1(ServerId, Type) ->
     %% If retrieved a metric-group-info,
     %% then it will generate metrics
-    {MetricGroup, Column} = ?sv_schema_and_key(Name),
+    {MetricGroup, Column} = ?sv_schema_and_key(ServerId),
     case svc_tbl_metric_group:get(MetricGroup) of
         {ok, #sv_metric_group{schema_name = Schema,
                               name = MetricGroup,

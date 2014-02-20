@@ -70,9 +70,6 @@ suite() ->
     {ok, Ret_1} = svc_tbl_metric_group:get(MetricGrp_1#sv_metric_group.name),
     {ok, Ret_2} = svc_tbl_metric_group:get(MetricGrp_2#sv_metric_group.name),
     {ok, Ret_3} = svc_tbl_metric_group:get(MetricGrp_3#sv_metric_group.name),
-    ?debugVal(Ret_1),
-    ?debugVal(Ret_2),
-    ?debugVal(Ret_3),
 
     not_found = svc_tbl_metric_group:get('metric_group_4'),
     Checksum_1 = svc_tbl_metric_group:checksum(SchemaName),

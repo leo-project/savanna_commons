@@ -64,7 +64,16 @@
                           ?COL_TYPE_HISTORY).
 
 -define(SV_PREFIX_NAME, "sv_").
--define(SV_THRESHOLD_OF_REMOVAL_PROC, 3).
+
+
+%% @doc Expiration of a process (metric-server)
+-ifdef(TEST).
+-define(SV_EXPIRE_TIME, 60). %% 60sec (2min)
+-else.
+-define(SV_EXPIRE_TIME, 'infinity').
+%% -define(SV_EXPIRE_TIME, 300). %% 300sec (5min)
+-endif.
+
 
 %% Macro
 %% @doc Generate a metric-name from a schema-name and a key
@@ -86,6 +95,15 @@
 
 
 %% Records
+-record(sv_metric_state, {id :: atom(),
+                          sample_mod  :: atom(),
+                          type        :: sv_histogram_type(),
+                          window      :: pos_integer(),
+                          notify_to   :: atom(),
+                          expire_time :: pos_integer(),
+                          updated_at  :: pos_integer()
+                         }).
+
 -record(sv_schema, {
           name       :: sv_schema(),
           created_at :: pos_integer()

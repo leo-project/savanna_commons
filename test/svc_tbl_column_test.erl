@@ -71,9 +71,6 @@ suite() ->
     {ok, Ret_1} = svc_tbl_column:get(Col_1#sv_column.schema_name, Col_1#sv_column.name),
     {ok, Ret_2} = svc_tbl_column:get(Col_2#sv_column.schema_name, Col_2#sv_column.name),
     {ok, Ret_3} = svc_tbl_column:get(Col_3#sv_column.schema_name, Col_3#sv_column.name),
-    ?debugVal(Ret_1),
-    ?debugVal(Ret_2),
-    ?debugVal(Ret_3),
 
     not_found = svc_tbl_column:get(SchemaName,'col_4'),
     Checksum_1 = svc_tbl_column:checksum(SchemaName),
