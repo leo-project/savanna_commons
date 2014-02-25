@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.4.4 (Feb 25, 2014)
+
+* Improved the function of trim-and-notify
+* Implemented to be able to set proc-expirration-time
+
+
 ## 0.4.3 (Feb 20, 2014)
 
 * Improved the performance
