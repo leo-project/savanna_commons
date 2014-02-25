@@ -29,7 +29,6 @@
 suite_test_() ->
     {setup,
      fun () ->
-             folsom:start(),
              mnesia:start(),
              {ok,_Pid} = savanna_commons_sup:start_link(),
              {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),

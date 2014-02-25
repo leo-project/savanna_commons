@@ -121,4 +121,9 @@ stop_slide_server_1([Pid|Rest]) ->
 %% Supervisor callbacks
 %% ===================================================================
 init([]) ->
-    {ok, {{one_for_one, 5, 60}, []}}.
+    Children = [
+                {folsom,
+                 {folsom_sup, start_link, []},
+                 permanent, 2000, supervisor, [folsom]}
+               ],
+    {ok, {{one_for_one, 5, 60}, Children}}.
