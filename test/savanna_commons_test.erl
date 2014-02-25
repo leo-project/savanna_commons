@@ -89,7 +89,6 @@ counter_metrics_1() ->
     timer:sleep(40000),
 
     savanna_commons:notify(Schema, {Key, 128}),
-    timer:sleep(1000),
     {ok, Ret_3} = svc_metric_server:get_values('sv_test.c1'),
     ?assertEqual(128, Ret_3),
 
