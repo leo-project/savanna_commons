@@ -4,6 +4,7 @@
 
 * Improved the function of trim-and-notify
 * Implemented to be able to set proc-expirration-time
+* Include folsom-sup into the savanna-commons-sup
 
 
 ## 0.4.3 (Feb 20, 2014)
