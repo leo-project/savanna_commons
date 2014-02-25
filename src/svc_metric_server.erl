@@ -65,10 +65,10 @@
 -spec(start_link(atom(), atom(), ?METRIC_COUNTER, pos_integer(), atom()) ->
              {ok, #sv_metric_state{}} | {error, any()}).
 start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback) ->
-    _ = folsom_ets:add_handler(counter, ServerId),
-    start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ?SV_EXPIRE_TIME).
+    start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ?SV_EXPIRATION_TIME).
 
 start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ExpireTime) ->
+    _ = folsom_ets:add_handler(counter, ServerId),
     gen_server:start_link({local, ServerId}, ?MODULE, [#sv_metric_state{id          = ServerId,
                                                                         sample_mod  = SampleMod,
                                                                         type        = SampleType,
@@ -83,7 +83,7 @@ start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, 
 start_link(ServerId, SampleMod, SampleType,
            Window, SampleSize, Alpha, Callback) ->
     start_link(ServerId, SampleMod, SampleType,
-           Window, SampleSize, Alpha, Callback, ?SV_EXPIRE_TIME).
+           Window, SampleSize, Alpha, Callback, ?SV_EXPIRATION_TIME).
 
 -spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
                  float(), function(), pos_integer()) ->

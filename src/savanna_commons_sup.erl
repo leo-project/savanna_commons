@@ -58,9 +58,10 @@ start_child('svc_metrics_counter' = Mod, ServerId, Callback) ->
                   pos_integer()|sv_histogram_type(), atom()) ->
              ok | {error, any()}).
 start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
+    ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_COUNTER,
-                                                  timer:seconds(Window), Callback]},
+                                                  timer:seconds(Window), Callback, ProcExpirationTime]},
                  temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
@@ -86,9 +87,10 @@ start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, Samp
 -spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), pos_integer(), float(), atom()) ->
              ok | {error, any()}).
 start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window,  SampleSize, Alpha, Callback) ->
+    ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, HistogramType,
-                                                  timer:seconds(Window), SampleSize, Alpha, Callback]},
+                                                  timer:seconds(Window), SampleSize, Alpha, Callback, ProcExpirationTime]},
                  temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of

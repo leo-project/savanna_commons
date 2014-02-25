@@ -77,7 +77,6 @@ counter_metrics_1() ->
     savanna_commons:notify(Schema, {Key, 384}),
     savanna_commons:notify(Schema, {Key, 512}),
 
-    timer:sleep(1000),
     {ok, Ret_1} = savanna_commons:get_metric_value(Schema, Key),
     ?assertEqual(1280, Ret_1),
 

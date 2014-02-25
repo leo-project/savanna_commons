@@ -68,10 +68,10 @@
 
 %% @doc Expiration of a process (metric-server)
 -ifdef(TEST).
--define(SV_EXPIRE_TIME, 60). %% 60sec (2min)
+-define(SV_EXPIRATION_TIME, 60). %% 60sec (2min)
 -else.
--define(SV_EXPIRE_TIME, 'infinity').
-%% -define(SV_EXPIRE_TIME, 300). %% 300sec (5min)
+-define(SV_EXPIRATION_TIME, 'infinity').
+%% -define(SV_EXPIRATION_TIME, 300). %% 300sec (5min)
 -endif.
 
 
@@ -91,6 +91,15 @@
             _MetricGrp = list_to_atom(string:sub_string(_Name_1, 1 + _PrefixLen, _Index - 1)),
             _Column    = list_to_atom(string:sub_string(_Name_1, _Index + 1)),
             {_MetricGrp,_Column}
+        end).
+
+%% @doc Retrieve process expire-time
+-define(env_proc_expiration_time(),
+        case application:get_env('savanna_commons', proc_expiration_time) of
+            {ok,_EnvProcExpirationTime} ->
+                _EnvProcExpirationTime;
+            _ ->
+                ?SV_EXPIRATION_TIME
         end).
 
 
