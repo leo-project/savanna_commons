@@ -15,9 +15,6 @@ notify(Schema, {Key, Values}) ->
     ok.
 
 sample() ->
-    %% Start "folsom"
-    folsom:start(),
-
     %% Start "mnesia"
     mnesia:start(),
 
