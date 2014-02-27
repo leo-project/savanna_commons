@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.6.0 (Feb 27, 2014)
+
+* Optimized the library
+    * Included folsom-sup into the savanna-commons's sup in order to easily embed applications
+    * Implemented `svc_operate_behaviour` in order to be able to add other metrics
+
+
 ## 0.4.4 (Feb 25, 2014)
 
 * Improved the function of trim-and-notify
