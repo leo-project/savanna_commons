@@ -22,20 +22,32 @@
 -module(svc_metrics_counter).
 -author('Yosuke Hara').
 
+-behaviour(svc_operate_behaviour).
+
 -include("savanna_commons.hrl").
--include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([handle_update/3,
-         trim_and_notify/1
-        ]).
+-export([handle_get_values/1,
+         handle_get_histogram_statistics/1,
+         handle_update/3,
+         trim_and_notify/1]).
 
 
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% @doc Update a value to folsom's ets (callback)
+%% @doc Retrieve a metric
+handle_get_values(_)->
+    [].
+
+
+%% @doc Retrieve a calculated statistics
+handle_get_histogram_statistics(_) ->
+    [].
+
+
+%% @doc Input a value into the sample
 handle_update(_,_,_) ->
     ok.
 
