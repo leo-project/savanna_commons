@@ -22,7 +22,7 @@
 -module(svc_metrics_histogram).
 -author('Yosuke Hara').
 
-%% -behaviour(gen_server).
+-behaviour(svc_operate_behaviour).
 
 -include("savanna_commons.hrl").
 -include_lib("folsom/include/folsom.hrl").

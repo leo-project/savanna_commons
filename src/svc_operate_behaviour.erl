@@ -19,13 +19,28 @@
 %% under the License.
 %%
 %%======================================================================
--module(svc_notify_behaviour).
+-module(svc_operate_behaviour).
 -author('Yosuke Hara').
 
 -include("savanna_commons.hrl").
+-include_lib("folsom/include/folsom.hrl").
 
 
-%% @doc Notify metric(s) and statistics to a callback-mod
-%%
--callback(notify(MetricGroup::sv_metric_grp(), {Key::sv_key(), Values::sv_values()}) ->
+%% @doc Retrieve a metric
+-callback(handle_get_values(Hist::#histogram{}) ->
+                 any() | {error, any()}).
+
+
+%% @doc Retrieve a calculated statistics
+-callback(handle_get_histogram_statistics(Hist::#histogram{}) ->
+                 any() | {error, any()}).
+
+
+%% @doc Input a value into the sample
+-callback(handle_update(sv_histogram_type(), #slide{}|#uniform{}|#exdec{}, Value::any()) ->
+                 ok | {error, any()}).
+
+
+%% @doc Input a value into the sample
+-callback(trim_and_notify(State::#sv_metric_state{}) ->
                  ok | {error, any()}).
