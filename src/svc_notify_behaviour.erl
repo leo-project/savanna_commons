@@ -24,6 +24,7 @@
 
 -include("savanna_commons.hrl").
 
+
 %% @doc Notify metric(s) and statistics to a callback-mod
 %%
 -callback(notify(MetricGroup::sv_metric_grp(), {Key::sv_key(), Values::sv_values()}) ->
