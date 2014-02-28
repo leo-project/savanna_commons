@@ -114,10 +114,11 @@ create_schema_1(_,_,_) ->
 
 %% doc Create a new metrics or histgram by the schema
 %%
--spec(create_metrics_by_schema(sv_schema(), pos_integer(), function()) ->
+-spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(), function()) ->
              ok | {error, any()}).
-create_metrics_by_schema(SchemaName, Window, Callback) ->
-    create_metrics_by_schema(SchemaName, SchemaName, Window, Callback).
+create_metrics_by_schema(SchemaName, MetricGroupName, Callback) ->
+    Window = ?SV_WINDOW_1MIN,
+    create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback).
 
 -spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
                                pos_integer(), function()) ->

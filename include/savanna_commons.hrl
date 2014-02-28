@@ -69,11 +69,16 @@
 
 %% @doc Expiration of a process (metric-server)
 -ifdef(TEST).
--define(SV_EXPIRATION_TIME, 60). %% 60sec (2min)
+-define(SV_EXPIRATION_TIME, 60). %% 60sec (1min)
 -else.
 -define(SV_EXPIRATION_TIME, 'infinity').
-%% -define(SV_EXPIRATION_TIME, 300). %% 300sec (5min)
 -endif.
+
+
+%% @doc Unit of windows
+-define(SV_WINDOW_1MIN,     60).
+-define(SV_WINDOW_5MIN,    300).
+-define(SV_GET_METRIC_SEC,  30).
 
 
 %% Macro
@@ -136,4 +141,15 @@
           window = 0  :: pos_integer(),
           callback    :: atom(),
           created_at  :: pos_integer() %% see:'svc_notify_behaviour'
+         }).
+
+-record(sv_result, {
+          schema_name :: sv_schema(),
+          metric_group_name :: sv_metric_grp(),
+          from              :: pos_integer(),
+          to                :: pos_integer(),
+          window            :: pos_integer(),
+          adjusted_step     :: pos_integer(),
+          col_name          :: sv_key(),
+          result            :: any()
          }).

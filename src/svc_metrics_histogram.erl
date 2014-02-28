@@ -31,12 +31,7 @@
 -export([handle_get_values/1,
          handle_get_histogram_statistics/1,
          handle_update/3,
-         trim_and_notify/1]).
-
--define(DEF_WIDTH,   16).
--define(DEF_WINDOW,  60).
--define(DEF_TIMEOUT, 30000).
--define(HOURSECS,    3600).
+         trim_and_notify/2]).
 
 
 %%--------------------------------------------------------------------
@@ -62,11 +57,11 @@ handle_update(?HISTOGRAM_EXDEC, Sample, Value) ->
 
 
 %% @doc Remove oldest values and notify metric with callback-func
--spec(trim_and_notify(#sv_metric_state{}) ->
+-spec(trim_and_notify(#sv_metric_state{}, #sv_result{}) ->
              ok | {error, any()}).
 trim_and_notify(#sv_metric_state{id = ServerId,
                                  type = SampleType,
-                                 notify_to = Callback})->
+                                 notify_to = Callback}, #sv_result{} = Result)->
     %% Retrieve the current value, then execute the callback-function
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
     Hist = get_value(ServerId),
@@ -76,7 +71,10 @@ trim_and_notify(#sv_metric_state{id = ServerId,
     %% then clear oldest data
     case svc_tbl_metric_group:get(MetricGroup) of
         {ok, #sv_metric_group{schema_name = SchemaName}} ->
-            catch Callback:notify(SchemaName, MetricGroup, {Key, CurrentStat}),
+            catch Callback:notify(Result#sv_result{schema_name = SchemaName,
+                                                   metric_group_name = MetricGroup,
+                                                   col_name = Key,
+                                                   result = CurrentStat}),
             try
                 ok = trim_1(SampleType, ServerId)
             catch
@@ -88,7 +86,6 @@ trim_and_notify(#sv_metric_state{id = ServerId,
             end,
             ok;
         _ ->
-            ?debugVal(?ERROR_COULD_NOT_GET_SCHEMA),
             {error, ?ERROR_COULD_NOT_GET_SCHEMA}
     end.
 

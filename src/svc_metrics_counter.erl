@@ -31,7 +31,7 @@
 -export([handle_get_values/1,
          handle_get_histogram_statistics/1,
          handle_update/3,
-         trim_and_notify/1]).
+         trim_and_notify/2]).
 
 
 %%--------------------------------------------------------------------
@@ -53,10 +53,10 @@ handle_update(_,_,_) ->
 
 
 %% @doc Remove oldest values and notify metric with callback-func
--spec(trim_and_notify(#sv_metric_state{}) ->
+-spec(trim_and_notify(#sv_metric_state{}, #sv_result{}) ->
              ok | {error, any()}).
 trim_and_notify(#sv_metric_state{id = ServerId,
-                                 notify_to = Callback}) ->
+                                 notify_to = Callback}, #sv_result{} = Result) ->
     %% Retrieve the current value, then execute the callback-function
     Count = folsom_metrics_counter:get_value(ServerId),
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
@@ -65,8 +65,11 @@ trim_and_notify(#sv_metric_state{id = ServerId,
     %% then clear oldest data
     case svc_tbl_metric_group:get(MetricGroup) of
         {ok, #sv_metric_group{schema_name = SchemaName}} ->
-            catch Callback:notify(SchemaName, MetricGroup, {Key, Count}),
 
+            catch Callback:notify(Result#sv_result{schema_name = SchemaName,
+                                                   metric_group_name = MetricGroup,
+                                                   col_name = Key,
+                                                   result = Count}),
             folsom_metrics_counter:clear(ServerId),
             ok;
         _ ->

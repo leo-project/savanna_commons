@@ -25,8 +25,8 @@
 -behaviour(svc_notify_behaviour).
 
 -include_lib("eunit/include/eunit.hrl").
--export([notify/3]).
+-export([notify/1]).
 
-notify(_Schema, _MetricGroup, {_Key, _Values}) ->
-    ?debugVal({_Schema, _MetricGroup, {_Key, _Values}}),
+notify(_Result) ->
+    ?debugVal(_Result),
     ok.

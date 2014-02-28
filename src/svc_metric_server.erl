@@ -46,8 +46,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--define(DEF_WIDTH,   16).
--define(DEF_WINDOW,  60).
 -define(DEF_TIMEOUT, 30000).
 -define(HOURSECS,    3600).
 
@@ -186,10 +184,10 @@ trim_and_notify(ServerId) ->
 init([State]) ->
     Now = leo_date:now(),
     ServerId = State#sv_metric_state.id,
-    Window   = State#sv_metric_state.window,
     State_1  = State#sv_metric_state{updated_at = Now,
                                      trimed_at  = Now},
-    timer:apply_after(Window, ?MODULE, trim_and_notify, [ServerId]),
+    timer:apply_after(timer:seconds(?SV_GET_METRIC_SEC),
+                      ?MODULE, trim_and_notify, [ServerId]),
     {ok, State_1}.
 
 
@@ -327,11 +325,11 @@ update_sample_conf(Sample, #sv_metric_state{id   = ServerId,
 %%      and notify caluculated metrics/statistics to a client
 %% @private
 judge_trim_and_notify(#sv_metric_state{id = ServerId,
-                                       window = Window,
                                        expire_time = ExpireTime,
                                        updated_at  = UpdatedAt} = State) ->
     %% Execute 'trim-and-notify' after the window's seconds
-    timer:apply_after(Window, ?MODULE, trim_and_notify, [ServerId]),
+    timer:apply_after(timer:seconds(?SV_GET_METRIC_SEC),
+                      ?MODULE, trim_and_notify, [ServerId]),
 
     %% Remove oldest metrics or statistics
     %% and notify caluculated metrics/statistics to a client
@@ -359,12 +357,23 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
     Now  = leo_date:now(),
     Diff = Now - TrimedAt,
 
-    case (Diff >= erlang:round(Window/1000)) of
+    case (Diff >= ?SV_GET_METRIC_SEC) of
         true ->
             Delay = erlang:phash(Now, 500),
             spawn(fun() ->
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
-                          catch Mod:trim_and_notify(State)
+
+                          ToDateTime   = TrimedAt + ?SV_GET_METRIC_SEC,
+                          {D,{H,M,_}} = calendar:gregorian_seconds_to_datetime(
+                                          ToDateTime - leo_math:floor(?SV_GET_METRIC_SEC/4)),
+                          AdjustedStep = calendar:datetime_to_gregorian_seconds({D, {H,M,0}}),
+
+                          catch Mod:trim_and_notify(
+                                  State, #sv_result{from   = TrimedAt,
+                                                    to     = ToDateTime,
+                                                    window = Window,
+                                                    adjusted_step = AdjustedStep
+                                                   })
                   end),
             State#sv_metric_state{trimed_at = Now};
         false ->
