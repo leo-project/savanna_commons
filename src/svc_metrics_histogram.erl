@@ -66,23 +66,31 @@ handle_update(?HISTOGRAM_EXDEC, Sample, Value) ->
              ok | {error, any()}).
 trim_and_notify(#sv_metric_state{id = ServerId,
                                  type = SampleType,
-                                 notify_to = Callback} = State)->
+                                 notify_to = Callback})->
     %% Retrieve the current value, then execute the callback-function
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
     Hist = get_value(ServerId),
     CurrentStat = get_current_statistics(Hist),
 
-    catch Callback:notify(MetricGroup, {Key, CurrentStat}),
-    try
-        trim_1(SampleType, ServerId)
-    catch
-        _:Cause ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING},
-                                    {function, "trim_1/3"},
-                                    {line, ?LINE}, {body, Cause}])
-    end,
-    State.
+    %% Notify a calculated statistics,
+    %% then clear oldest data
+    case svc_tbl_metric_group:get(MetricGroup) of
+        {ok, #sv_metric_group{schema_name = SchemaName}} ->
+            catch Callback:notify(SchemaName, MetricGroup, {Key, CurrentStat}),
+            try
+                ok = trim_1(SampleType, ServerId)
+            catch
+                _:Cause ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "trim_and_notify/1"},
+                                            {line, ?LINE}, {body, Cause}])
+            end,
+            ok;
+        _ ->
+            ?debugVal(?ERROR_COULD_NOT_GET_SCHEMA),
+            {error, ?ERROR_COULD_NOT_GET_SCHEMA}
+    end.
 
 %% @private
 trim_1(?HISTOGRAM_SLIDE, ServerId) ->

@@ -59,9 +59,16 @@ trim_and_notify(#sv_metric_state{id = ServerId,
                                  notify_to = Callback}) ->
     %% Retrieve the current value, then execute the callback-function
     Count = folsom_metrics_counter:get_value(ServerId),
-    {SchemaName, Key} = ?sv_schema_and_key(ServerId),
-    catch Callback:notify(SchemaName, {Key, Count}),
+    {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
 
-    %% Clear oldest data
-    folsom_metrics_counter:clear(ServerId),
-    ok.
+    %% Notify a calculated metric,
+    %% then clear oldest data
+    case svc_tbl_metric_group:get(MetricGroup) of
+        {ok, #sv_metric_group{schema_name = SchemaName}} ->
+            catch Callback:notify(SchemaName, MetricGroup, {Key, Count}),
+
+            folsom_metrics_counter:clear(ServerId),
+            ok;
+        _ ->
+            {error, ?ERROR_COULD_NOT_GET_SCHEMA}
+    end.

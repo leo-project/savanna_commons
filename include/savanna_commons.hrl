@@ -28,8 +28,9 @@
 -type(sv_values() :: list(tuple())).
 -type(sv_metric_grp() :: atom()).
 
--define(ERROR_ETS_NOT_AVAILABLE, "ETS is not available").
--define(ERROR_MNESIA_NOT_START,  "Mnesia is not available").
+-define(ERROR_ETS_NOT_AVAILABLE,    "ETS is not available").
+-define(ERROR_MNESIA_NOT_START,     "Mnesia is not available").
+-define(ERROR_COULD_NOT_GET_SCHEMA, "Could not get a schema").
 
 -define(METRIC_COUNTER,   'counter').
 -define(METRIC_HISTOGRAM, 'histogram').
