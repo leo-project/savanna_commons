@@ -28,10 +28,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/5,
-         start_link/6,
-         start_link/7,
-         start_link/8,
+-export([start_link/7,
+         start_link/9,
          stop/1]).
 
 -export([get_status/1,
@@ -60,54 +58,41 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
--spec(start_link(atom(), atom(), ?METRIC_COUNTER, pos_integer(), atom()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
-start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback) ->
-    start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ?SV_EXPIRATION_TIME).
-
-start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ExpireTime) ->
+start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, Step, ExpireTime) ->
     _ = folsom_ets:add_handler(counter, ServerId),
     gen_server:start_link({local, ServerId}, ?MODULE, [#sv_metric_state{id          = ServerId,
                                                                         sample_mod  = SampleMod,
                                                                         type        = SampleType,
-                                                                        window      = Window,
                                                                         notify_to   = Callback,
+                                                                        window      = Window,
+                                                                        step        = Step,
                                                                         expire_time = ExpireTime
                                                                        }], []).
 
--spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
-                 float(), function()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
-start_link(ServerId, SampleMod, SampleType,
-           Window, SampleSize, Alpha, Callback) ->
-    start_link(ServerId, SampleMod, SampleType,
-           Window, SampleSize, Alpha, Callback, ?SV_EXPIRATION_TIME).
-
--spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
-                 float(), function(), pos_integer()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
 start_link(ServerId, SampleMod, ?HISTOGRAM_SLIDE = SampleType,
-           Window,_SampleSize,_Alpha, Callback, ExpireTime) ->
+           Window,_SampleSize,_Alpha, Callback, Step, ExpireTime) ->
     Sample = #slide{window = Window},
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_UNIFORM = SampleType,
-           Window, SampleSize,_Alpha, Callback, ExpireTime) ->
+           Window, SampleSize,_Alpha, Callback, Step, ExpireTime) ->
     Sample = #uniform{size = SampleSize},
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
-           Window, SampleSize, Alpha, Callback, ExpireTime) ->
+           Window, SampleSize, Alpha, Callback, Step, ExpireTime) ->
     Now = folsom_utils:now_epoch(),
     Sample = #exdec{start = Now,
                     next  = Now + ?HOURSECS,
@@ -116,8 +101,9 @@ start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          }).
 
@@ -184,9 +170,10 @@ trim_and_notify(ServerId) ->
 init([State]) ->
     Now = leo_date:now(),
     ServerId = State#sv_metric_state.id,
+    Window   = State#sv_metric_state.window,
     State_1  = State#sv_metric_state{updated_at = Now,
                                      trimed_at  = Now},
-    timer:apply_after(timer:seconds(?SV_GET_METRIC_SEC),
+    timer:apply_after(timer:seconds(Window),
                       ?MODULE, trim_and_notify, [ServerId]),
     {ok, State_1}.
 
@@ -326,9 +313,10 @@ update_sample_conf(Sample, #sv_metric_state{id   = ServerId,
 %% @private
 judge_trim_and_notify(#sv_metric_state{id = ServerId,
                                        expire_time = ExpireTime,
+                                       window = Window,
                                        updated_at  = UpdatedAt} = State) ->
     %% Execute 'trim-and-notify' after the window's seconds
-    timer:apply_after(timer:seconds(?SV_GET_METRIC_SEC),
+    timer:apply_after(timer:seconds(Window),
                       ?MODULE, trim_and_notify, [ServerId]),
 
     %% Remove oldest metrics or statistics
@@ -357,15 +345,15 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
     Now  = leo_date:now(),
     Diff = Now - TrimedAt,
 
-    case (Diff >= ?SV_GET_METRIC_SEC) of
+    case (Diff >= Window) of
         true ->
             Delay = erlang:phash(Now, 500),
             spawn(fun() ->
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
 
-                          ToDateTime   = TrimedAt + ?SV_GET_METRIC_SEC,
+                          ToDateTime   = TrimedAt + Window,
                           {D,{H,M,_}} = calendar:gregorian_seconds_to_datetime(
-                                          ToDateTime - leo_math:floor(?SV_GET_METRIC_SEC/4)),
+                                          ToDateTime - leo_math:floor(Window/4)),
                           AdjustedStep = calendar:datetime_to_gregorian_seconds({D, {H,M,0}}),
 
                           catch Mod:trim_and_notify(

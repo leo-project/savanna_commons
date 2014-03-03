@@ -76,9 +76,16 @@
 
 
 %% @doc Unit of windows
--define(SV_WINDOW_1MIN,     60).
--define(SV_WINDOW_5MIN,    300).
--define(SV_GET_METRIC_SEC,  30).
+-define(SV_WINDOW_10S, 10).
+-define(SV_WINDOW_30S, 30).
+-define(SV_WINDOW_1M,  60).
+-define(SV_WINDOW_5M, 300).
+
+%% @doc Unit of steps
+-define(SV_STEP_1M,   60).
+-define(SV_STEP_5M,  300).
+-define(SV_STEP_10M, 600).
+-define(SV_STEP_15M, 900).
 
 
 %% Macro
@@ -113,8 +120,9 @@
 -record(sv_metric_state, {id :: atom(),
                           sample_mod  :: atom(),
                           type        :: sv_histogram_type(),
-                          window      :: pos_integer(),
                           notify_to   :: atom(),
+                          window      :: pos_integer(),
+                          step        :: pos_integer(),
                           expire_time :: pos_integer(),
                           updated_at  :: pos_integer(),
                           trimed_at   :: pos_integer()
@@ -139,9 +147,22 @@
           schema_name :: sv_schema(),
           name        :: sv_metric_grp(),
           window = 0  :: pos_integer(),
+          step   = 0  :: pos_integer(),
           callback    :: atom(),
           created_at  :: pos_integer() %% see:'svc_notify_behaviour'
          }).
+
+-record(sv_metric_conf, {
+          metric_type       :: sv_metric_type(),
+          histogram_type    :: sv_histogram_type(),
+          metric_group_name :: sv_metric_grp(),
+          name              :: sv_key(),
+          window = 0        :: pos_integer(),
+          step = 0          :: pos_integer(),
+          sample_size = -1  :: integer(),
+          alpha = 0.0       :: float(),
+          callback          :: atom()
+          }).
 
 -record(sv_result, {
           schema_name :: sv_schema(),

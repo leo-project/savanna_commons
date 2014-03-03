@@ -26,7 +26,7 @@
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([new/4, new/5, new/6, new/7, new/8,
+-export([new/1,
          create_schema/2,
          create_metrics_by_schema/3,
          create_metrics_by_schema/4,
@@ -39,40 +39,20 @@
 %% ===================================================================
 %% @doc Create a new metrics or histgram
 %%
-new(?METRIC_COUNTER, MetricGroup, Key, Callback) ->
+new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
+                    metric_group_name = MetricGroup,
+                    name = Key} = MetricConf) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId, Callback),
-    new_1(Ret).
-
-new(?METRIC_COUNTER, MetricGroup, Key, Window, Callback) ->
-    ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId,
-                                          Window, Callback),
+    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId, MetricConf),
     new_1(Ret);
 
-new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Callback) ->
+new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
+                    metric_group_name = MetricGroup,
+                    name = Key} = MetricConf) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
-                                          HistogramType, Callback),
+    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId, MetricConf),
     new_1(Ret).
 
-new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, Callback) ->
-    ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
-                                          HistogramType, Window, Callback),
-    new_1(Ret).
-
-new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Callback) ->
-    ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
-                                          HistogramType, Window, SampleSize, Callback),
-    new_1(Ret).
-
-new(?METRIC_HISTOGRAM, HistogramType, MetricGroup, Key, Window, SampleSize, Alpha, Callback) ->
-    ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId,
-                                          HistogramType, Window, SampleSize, Alpha, Callback),
-    new_1(Ret).
 
 %% @private
 new_1(ok) ->
@@ -117,25 +97,31 @@ create_schema_1(_,_,_) ->
 -spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(), function()) ->
              ok | {error, any()}).
 create_metrics_by_schema(SchemaName, MetricGroupName, Callback) ->
-    Window = ?SV_WINDOW_1MIN,
-    create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback).
+    create_metrics_by_schema(SchemaName, MetricGroupName, ?SV_WINDOW_1M, Callback).
 
 -spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
                                pos_integer(), function()) ->
              ok | {error, any()}).
 create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
+    create_metrics_by_schema(SchemaName, MetricGroupName, Window, ?SV_STEP_1M, Callback).
+
+-spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
+                               pos_integer(), pos_integer(), function()) ->
+             ok | {error, any()}).
+create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, Callback) ->
     case svc_tbl_schema:get(SchemaName) of
         {ok,_} ->
             case svc_tbl_column:find_by_schema_name(SchemaName) of
                 {ok, Columns} ->
                     case svc_tbl_metric_group:update(
                            #sv_metric_group{schema_name = SchemaName,
-                                            name = MetricGroupName,
-                                            window = Window,
+                                            name     = MetricGroupName,
+                                            window   = Window,
+                                            step     = Step,
                                             callback = Callback}) of
                         ok ->
                             create_metrics_by_schema_1(
-                              MetricGroupName, Columns, Window, Callback);
+                              MetricGroupName, Columns, Window, Step, Callback);
                         Error ->
                             Error
                     end;
@@ -147,40 +133,60 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
     end.
 
 %% @private
-create_metrics_by_schema_1(_,[],_,_) ->
+create_metrics_by_schema_1(_,[],_,_,_) ->
     ok;
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_COUNTER,
-                                                        name = Key}|Rest], Window, Callback) ->
-    ok = new(?METRIC_COUNTER, MetricGroupName, Key, Window, Callback),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+                                                        name = Key}|Rest], Window, Step, Callback) ->
+    ok = new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
+                             metric_group_name = MetricGroupName,
+                             name = Key,
+                             window = Window,
+                             callback = Callback}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
 
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_UNIFORM,
                                                         constraint  = Constraint,
-                                                        name = Key}|Rest], Window, Callback) ->
+                                                        name = Key}|Rest], Window, Step, Callback) ->
     HType = ?HISTOGRAM_UNIFORM,
-    ok = case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-             [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
-             N  -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N, Callback)
-         end,
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+    SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
+
+    ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
+                             histogram_type = HType,
+                             metric_group_name = MetricGroupName,
+                             name = Key,
+                             window = Window,
+                             sample_size = SampleSize,
+                             callback = Callback}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_SLIDE,
-                                                        name = Key}|Rest], Window, Callback) ->
-    ok = new(?METRIC_HISTOGRAM, ?HISTOGRAM_SLIDE, MetricGroupName, Key, Window, Callback),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
+                                                        name = Key}|Rest], Window, Step, Callback) ->
+    HType = ?HISTOGRAM_SLIDE,
+    ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
+                             histogram_type = HType,
+                             metric_group_name = MetricGroupName,
+                             name = Key,
+                             window = Window,
+                             callback = Callback}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+
 create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_EXDEC,
                                                         constraint  = Constraint,
-                                                        name = Key}|Rest], Window, Callback) ->
+                                                        name = Key}|Rest], Window, Step, Callback) ->
     HType = ?HISTOGRAM_EXDEC,
-    ok = case leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, []) of
-             [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, Callback);
-             N1 ->
-                 case leo_misc:get_value(?HISTOGRAM_CONS_ALPHA, Constraint, []) of
-                     [] -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, Callback);
-                     N2 -> new(?METRIC_HISTOGRAM, HType, MetricGroupName, Key, Window, N1, N2, Callback)
-                 end
-         end,
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Callback);
-create_metrics_by_schema_1(_,_,_,_) ->
+    SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
+    AlphaValue = leo_misc:get_value(?HISTOGRAM_CONS_ALPHA,  Constraint, ?DEFAULT_ALPHA),
+
+    ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
+                             histogram_type = HType,
+                             metric_group_name = MetricGroupName,
+                             name = Key,
+                             window = Window,
+                             sample_size = SampleSize,
+                             alpha = AlphaValue,
+                             callback = Callback}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+create_metrics_by_schema_1(_,_,_,_,_) ->
     {error, invalid_args}.
 
 

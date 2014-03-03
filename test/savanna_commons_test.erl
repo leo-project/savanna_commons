@@ -63,6 +63,7 @@ counter_metrics_1() ->
     Schema = 'test',
     MetricGroup = 'test_grp_1',
     Key = 'c1',
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [#sv_column{name = Key,
@@ -70,7 +71,7 @@ counter_metrics_1() ->
                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
     savanna_commons:notify(MetricGroup, {Key, 128}),
     savanna_commons:notify(MetricGroup, {Key, 256}),
@@ -80,7 +81,7 @@ counter_metrics_1() ->
     {ok, Ret_1} = savanna_commons:get_metric_value(MetricGroup, Key),
     ?assertEqual(1280, Ret_1),
 
-    timer:sleep(timer:seconds(?SV_GET_METRIC_SEC + 3)),
+    timer:sleep(timer:seconds(Window + 3)),
     {ok, Ret_2} = savanna_commons:get_metric_value(MetricGroup, Key),
     ?assertEqual(0, Ret_2),
 
@@ -102,6 +103,7 @@ histogram_1() ->
     Schema = 'test',
     MetricGroup = 'test_grp_2',
     Key = 'h1',
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [
@@ -110,7 +112,7 @@ histogram_1() ->
                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
     savanna_commons:notify(MetricGroup, {Key,  16}),
     savanna_commons:notify(MetricGroup, {Key,  32}),
@@ -130,7 +132,7 @@ histogram_1() ->
     ?assertEqual(128, leo_misc:get_value('median', Ret_1)),
     ?assertEqual(7,   leo_misc:get_value('n',      Ret_1)),
 
-    timer:sleep(timer:seconds(?SV_GET_METRIC_SEC + 3)),
+    timer:sleep(timer:seconds(Window + 3)),
     {ok, Ret_2} = savanna_commons:get_histogram_statistics(MetricGroup, Key),
     ?assertEqual(0.0, leo_misc:get_value('min',    Ret_2)),
     ?assertEqual(0.0, leo_misc:get_value('max',    Ret_2)),
@@ -165,9 +167,10 @@ create_schema() ->
 create_metrics_by_shcema() ->
     Schema = 'test_1',
     MetricGroup = Schema,
+    Window = 10,
 
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
     Key_1 = 'col_1',
     savanna_commons:notify(Schema, {Key_1, 128}),
     savanna_commons:notify(Schema, {Key_1, 256}),
@@ -231,7 +234,7 @@ create_metrics_by_shcema() ->
     ?assertEqual(true, [] /= Ret_3),
     ?assertEqual(true, [] /= Ret_4),
 
-    timer:sleep(timer:seconds(?SV_GET_METRIC_SEC + 3)),
+    timer:sleep(timer:seconds(Window + 3)),
     ok.
 
 %% TEST metric counter
@@ -239,13 +242,14 @@ counter_metrics_2() ->
     Schema = 'test_counter',
     MetricGroup = Schema,
     Key = 'col_1',
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [#sv_column{name = Key,
                                type = ?COL_TYPE_COUNTER,
                                constraint = []}
                    ]),
-    ok = savanna_commons:create_metrics_by_schema(Schema, MetricGroup, 'svc_nofify_sample'),
+    ok = savanna_commons:create_metrics_by_schema(Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
     StartTime = leo_date:now(),
     EndTime   = StartTime + 65,
@@ -264,6 +268,7 @@ histogram_2() ->
     Schema = 'test_histogram_1',
     MetricGroup = Schema,
     Key = 'h1',
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [
@@ -272,7 +277,7 @@ histogram_2() ->
                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
 
     StartTime = leo_date:now(),
@@ -288,6 +293,7 @@ histogram_3() ->
     MetricGroup = Schema,
     Key = 'h1',
     SampleSize = 3000,
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [
@@ -296,7 +302,7 @@ histogram_3() ->
                                constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
 
     StartTime = leo_date:now(),
@@ -311,6 +317,7 @@ histogram_4() ->
     MetricGroup = Schema,
     Key = 'h1',
     SampleSize = 3000,
+    Window = 10,
 
     ok = savanna_commons:create_schema(
            Schema, [
@@ -319,7 +326,7 @@ histogram_4() ->
                                constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
-           Schema, MetricGroup, 'svc_nofify_sample'),
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
     StartTime = leo_date:now(),
     EndTime   = StartTime + 130,
