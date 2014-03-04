@@ -28,10 +28,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([start_link/5,
-         start_link/6,
-         start_link/7,
-         start_link/8,
+-export([start_link/7,
+         start_link/9,
          stop/1]).
 
 -export([get_status/1,
@@ -46,8 +44,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--define(DEF_WIDTH,   16).
--define(DEF_WINDOW,  60).
 -define(DEF_TIMEOUT, 30000).
 -define(HOURSECS,    3600).
 
@@ -62,54 +58,41 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
--spec(start_link(atom(), atom(), ?METRIC_COUNTER, pos_integer(), atom()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
-start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback) ->
-    start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ?SV_EXPIRATION_TIME).
-
-start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, ExpireTime) ->
+start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, Step, ExpireTime) ->
     _ = folsom_ets:add_handler(counter, ServerId),
     gen_server:start_link({local, ServerId}, ?MODULE, [#sv_metric_state{id          = ServerId,
                                                                         sample_mod  = SampleMod,
                                                                         type        = SampleType,
-                                                                        window      = Window,
                                                                         notify_to   = Callback,
+                                                                        window      = Window,
+                                                                        step        = Step,
                                                                         expire_time = ExpireTime
                                                                        }], []).
 
--spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
-                 float(), function()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
-start_link(ServerId, SampleMod, SampleType,
-           Window, SampleSize, Alpha, Callback) ->
-    start_link(ServerId, SampleMod, SampleType,
-           Window, SampleSize, Alpha, Callback, ?SV_EXPIRATION_TIME).
-
--spec(start_link(atom(), atom(), sv_histogram_type(), pos_integer(), pos_integer(),
-                 float(), function(), pos_integer()) ->
-             {ok, #sv_metric_state{}} | {error, any()}).
 start_link(ServerId, SampleMod, ?HISTOGRAM_SLIDE = SampleType,
-           Window,_SampleSize,_Alpha, Callback, ExpireTime) ->
+           Window,_SampleSize,_Alpha, Callback, Step, ExpireTime) ->
     Sample = #slide{window = Window},
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_UNIFORM = SampleType,
-           Window, SampleSize,_Alpha, Callback, ExpireTime) ->
+           Window, SampleSize,_Alpha, Callback, Step, ExpireTime) ->
     Sample = #uniform{size = SampleSize},
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          });
 start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
-           Window, SampleSize, Alpha, Callback, ExpireTime) ->
+           Window, SampleSize, Alpha, Callback, Step, ExpireTime) ->
     Now = folsom_utils:now_epoch(),
     Sample = #exdec{start = Now,
                     next  = Now + ?HOURSECS,
@@ -118,8 +101,9 @@ start_link(ServerId, SampleMod, ?HISTOGRAM_EXDEC = SampleType,
     start_link_1(Sample, #sv_metric_state{id          = ServerId,
                                           sample_mod  = SampleMod,
                                           type        = SampleType,
-                                          window      = Window,
                                           notify_to   = Callback,
+                                          window      = Window,
+                                          step        = Step,
                                           expire_time = ExpireTime
                                          }).
 
@@ -189,7 +173,8 @@ init([State]) ->
     Window   = State#sv_metric_state.window,
     State_1  = State#sv_metric_state{updated_at = Now,
                                      trimed_at  = Now},
-    timer:apply_after(Window, ?MODULE, trim_and_notify, [ServerId]),
+    timer:apply_after(timer:seconds(Window),
+                      ?MODULE, trim_and_notify, [ServerId]),
     {ok, State_1}.
 
 
@@ -327,11 +312,12 @@ update_sample_conf(Sample, #sv_metric_state{id   = ServerId,
 %%      and notify caluculated metrics/statistics to a client
 %% @private
 judge_trim_and_notify(#sv_metric_state{id = ServerId,
-                                       window = Window,
                                        expire_time = ExpireTime,
+                                       window = Window,
                                        updated_at  = UpdatedAt} = State) ->
     %% Execute 'trim-and-notify' after the window's seconds
-    timer:apply_after(Window, ?MODULE, trim_and_notify, [ServerId]),
+    timer:apply_after(timer:seconds(Window),
+                      ?MODULE, trim_and_notify, [ServerId]),
 
     %% Remove oldest metrics or statistics
     %% and notify caluculated metrics/statistics to a client
@@ -355,18 +341,96 @@ judge_trim_and_notify(#sv_metric_state{id = ServerId,
 %% @private
 trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
                                    window = Window,
+                                   step = Step,
                                    trimed_at = TrimedAt} = State) ->
     Now  = leo_date:now(),
     Diff = Now - TrimedAt,
 
-    case (Diff >= erlang:round(Window/1000)) of
+    case (Diff >= Window) of
         true ->
             Delay = erlang:phash(Now, 500),
             spawn(fun() ->
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
-                          catch Mod:trim_and_notify(State)
+
+                          ToDateTime   = TrimedAt + Window,
+                          AdjustedStep = adjust_step(ToDateTime, Window, Step),
+
+                          catch Mod:trim_and_notify(
+                                  State, #sv_result{from   = TrimedAt,
+                                                    to     = ToDateTime,
+                                                    window = Window,
+                                                    adjusted_step = AdjustedStep
+                                                   })
                   end),
             State#sv_metric_state{trimed_at = Now};
         false ->
             State
     end.
+
+%% @private
+adjust_step(DateTime, Window, Step) ->
+    {D,{H,M,_}} = calendar:gregorian_seconds_to_datetime(
+                    DateTime - leo_math:floor(Window/4)),
+    AdjustedStep_1 = calendar:datetime_to_gregorian_seconds({D, {H,M,0}}),
+    AdjustedStep_2 = case (Step > ?SV_STEP_1M)  of
+                         true ->
+                             StepMin = erlang:round(Step/60),
+                             AdjustedStep_1 +
+                                 (((M + (StepMin - (M rem StepMin))) - M) * 60);
+                         false ->
+                             AdjustedStep_1
+                     end,
+    AdjustedStep_2.
+
+
+%%--------------------------------------------------------------------
+%% TEST FUNCTIONS
+%%--------------------------------------------------------------------
+-ifdef(EUNIT).
+adjust_step_test_() ->
+    {setup,
+     fun () ->  ok end,
+     fun (_) -> ok end,
+     [
+      {"test sliding counter-metrics",
+       {timeout, 120, fun adjusted_step/0}}
+     ]}.
+
+adjusted_step() ->
+    %% 1min
+    _Ret_1 = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_1M),
+    _Ret_2 = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_1M),
+    _Ret_3 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_1M),
+
+    %% 5min
+    _Ret_4 = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_5M),
+    _Ret_5 = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_5M),
+    _Ret_6 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_5M),
+    _Ret_7 = adjust_step(leo_date:now(), ?SV_WINDOW_5M,  ?SV_STEP_5M),
+
+    {_,{_,M4,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M4 rem  5),
+    {_,{_,M5,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M5 rem  5),
+    {_,{_,M6,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M6 rem  5),
+    {_,{_,M7,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M7 rem  5),
+
+    %% 10min
+    _Ret_8  = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_10M),
+    _Ret_9  = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_10M),
+    _Ret_10 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_10M),
+    _Ret_11 = adjust_step(leo_date:now(), ?SV_WINDOW_5M,  ?SV_STEP_10M),
+
+    {_,{_,M8,0}} = calendar:gregorian_seconds_to_datetime(_Ret_8),
+    ?assertEqual(0, M8  rem  10),
+    {_,{_,M9,0}} = calendar:gregorian_seconds_to_datetime(_Ret_9),
+    ?assertEqual(0, M9  rem  10),
+    {_,{_,M10,0}}= calendar:gregorian_seconds_to_datetime(_Ret_10),
+    ?assertEqual(0, M10 rem  10),
+    {_,{_,M11,0}}= calendar:gregorian_seconds_to_datetime(_Ret_11),
+    ?assertEqual(0, M11 rem  10),
+    ok.
+
+-endif.

@@ -42,5 +42,5 @@
 
 
 %% @doc Input a value into the sample
--callback(trim_and_notify(State::#sv_metric_state{}) ->
+-callback(trim_and_notify(State::#sv_metric_state{}, Result::#sv_result{}) ->
                  ok | {error, any()}).

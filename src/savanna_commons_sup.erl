@@ -30,8 +30,7 @@
 
 %% API
 -export([start_link/0,
-         start_child/3, start_child/4, start_child/5,
-         start_child/6, start_child/7,
+         start_child/3,
          stop_slide_server/1
         ]).
 
@@ -49,19 +48,16 @@ start_link() ->
 
 %% @doc Start children
 %%
--spec(start_child('svc_metrics_counter', atom(), atom()) ->
+-spec(start_child('svc_metrics_counter', atom(), #sv_metric_conf{}) ->
              ok | {error, any()}).
-start_child('svc_metrics_counter' = Mod, ServerId, Callback) ->
-    start_child(Mod, ServerId, ?DEF_WINDOW, Callback).
-
--spec(start_child('svc_metrics_counter'|'svc_metrics_histogram', atom(),
-                  pos_integer()|sv_histogram_type(), atom()) ->
-             ok | {error, any()}).
-start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
+start_child('svc_metrics_counter' = Mod, ServerId, MetricConf) ->
+    #sv_metric_conf{window   = Window,
+                    step     = Step,
+                    callback = Callback} = MetricConf,
     ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_COUNTER,
-                                                  timer:seconds(Window), Callback, ProcExpirationTime]},
+                                                  Window, Callback, Step, ProcExpirationTime]},
                  temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
@@ -71,26 +67,17 @@ start_child('svc_metrics_counter' = Mod, ServerId, Window, Callback) ->
             {error, Cause}
     end;
 
-start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Callback) ->
-    start_child(Mod, ServerId, HistogramType, ?DEF_WINDOW, Callback).
-
--spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), atom()) ->
-             ok | {error, any()}).
-start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, Callback) ->
-    start_child(Mod, ServerId, HistogramType, Window, ?DEFAULT_SIZE, Callback).
-
--spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), pos_integer(), atom()) ->
-             ok | {error, any()}).
-start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window, SampleSize, Callback) ->
-    start_child(Mod, ServerId, HistogramType, Window, SampleSize, ?DEFAULT_ALPHA, Callback).
-
--spec(start_child('svc_metrics_histogram', atom(), sv_histogram_type(), pos_integer(), pos_integer(), float(), atom()) ->
-             ok | {error, any()}).
-start_child('svc_metrics_histogram' = Mod, ServerId, HistogramType, Window,  SampleSize, Alpha, Callback) ->
+start_child('svc_metrics_histogram' = Mod, ServerId, MetricConf) ->
+    #sv_metric_conf{histogram_type = HistogramType,
+                    window      = Window,
+                    step        = Step,
+                    sample_size = SampleSize,
+                    alpha       = Alpha,
+                    callback    = Callback} = MetricConf,
     ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, HistogramType,
-                                                  timer:seconds(Window), SampleSize, Alpha, Callback, ProcExpirationTime]},
+                                                  Window, SampleSize, Alpha, Callback, Step, ProcExpirationTime]},
                  temporary, 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
