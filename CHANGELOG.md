@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.6.1 (Mar 4, 2014)
+
+* Optimized the library
+    * Refactor - Optimized whole functions
+    * Implemented that an end datetime of a sampling adjusts a step
+
+
 ## 0.6.0 (Feb 27, 2014)
 
 * Optimized the library
