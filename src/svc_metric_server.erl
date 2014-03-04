@@ -341,6 +341,7 @@ judge_trim_and_notify(#sv_metric_state{id = ServerId,
 %% @private
 trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
                                    window = Window,
+                                   step = Step,
                                    trimed_at = TrimedAt} = State) ->
     Now  = leo_date:now(),
     Diff = Now - TrimedAt,
@@ -352,9 +353,7 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
 
                           ToDateTime   = TrimedAt + Window,
-                          {D,{H,M,_}} = calendar:gregorian_seconds_to_datetime(
-                                          ToDateTime - leo_math:floor(Window/4)),
-                          AdjustedStep = calendar:datetime_to_gregorian_seconds({D, {H,M,0}}),
+                          AdjustedStep = adjust_step(ToDateTime, Window, Step),
 
                           catch Mod:trim_and_notify(
                                   State, #sv_result{from   = TrimedAt,
@@ -367,3 +366,71 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
         false ->
             State
     end.
+
+%% @private
+adjust_step(DateTime, Window, Step) ->
+    {D,{H,M,_}} = calendar:gregorian_seconds_to_datetime(
+                    DateTime - leo_math:floor(Window/4)),
+    AdjustedStep_1 = calendar:datetime_to_gregorian_seconds({D, {H,M,0}}),
+    AdjustedStep_2 = case (Step > ?SV_STEP_1M)  of
+                         true ->
+                             StepMin = erlang:round(Step/60),
+                             AdjustedStep_1 +
+                                 (((M + (StepMin - (M rem StepMin))) - M) * 60);
+                         false ->
+                             AdjustedStep_1
+                     end,
+    AdjustedStep_2.
+
+
+%%--------------------------------------------------------------------
+%% TEST FUNCTIONS
+%%--------------------------------------------------------------------
+-ifdef(EUNIT).
+adjust_step_test_() ->
+    {setup,
+     fun () ->  ok end,
+     fun (_) -> ok end,
+     [
+      {"test sliding counter-metrics",
+       {timeout, 120, fun adjusted_step/0}}
+     ]}.
+
+adjusted_step() ->
+    %% 1min
+    _Ret_1 = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_1M),
+    _Ret_2 = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_1M),
+    _Ret_3 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_1M),
+
+    %% 5min
+    _Ret_4 = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_5M),
+    _Ret_5 = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_5M),
+    _Ret_6 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_5M),
+    _Ret_7 = adjust_step(leo_date:now(), ?SV_WINDOW_5M,  ?SV_STEP_5M),
+
+    {_,{_,M4,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M4 rem  5),
+    {_,{_,M5,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M5 rem  5),
+    {_,{_,M6,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M6 rem  5),
+    {_,{_,M7,0}}= calendar:gregorian_seconds_to_datetime(_Ret_4),
+    ?assertEqual(0, M7 rem  5),
+
+    %% 10min
+    _Ret_8  = adjust_step(leo_date:now(), ?SV_WINDOW_10S, ?SV_STEP_10M),
+    _Ret_9  = adjust_step(leo_date:now(), ?SV_WINDOW_30S, ?SV_STEP_10M),
+    _Ret_10 = adjust_step(leo_date:now(), ?SV_WINDOW_1M,  ?SV_STEP_10M),
+    _Ret_11 = adjust_step(leo_date:now(), ?SV_WINDOW_5M,  ?SV_STEP_10M),
+
+    {_,{_,M8,0}} = calendar:gregorian_seconds_to_datetime(_Ret_8),
+    ?assertEqual(0, M8  rem  10),
+    {_,{_,M9,0}} = calendar:gregorian_seconds_to_datetime(_Ret_9),
+    ?assertEqual(0, M9  rem  10),
+    {_,{_,M10,0}}= calendar:gregorian_seconds_to_datetime(_Ret_10),
+    ?assertEqual(0, M10 rem  10),
+    {_,{_,M11,0}}= calendar:gregorian_seconds_to_datetime(_Ret_11),
+    ?assertEqual(0, M11 rem  10),
+    ok.
+
+-endif.
