@@ -30,6 +30,7 @@
          create_schema/2,
          create_metrics_by_schema/3,
          create_metrics_by_schema/4,
+         create_metrics_by_schema/5,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2]).
 
