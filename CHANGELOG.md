@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.6.2 (Mar 29, 2014)
+
+* Bump leo_commons to 1.0.1
+
+
 ## 0.6.1 (Mar 4, 2014)
 
 * Optimized the library
