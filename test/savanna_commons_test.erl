@@ -66,9 +66,9 @@ counter_metrics_1() ->
     Window = 10,
 
     ok = savanna_commons:create_schema(
-           Schema, [#sv_column{name = Key,
-                               type = ?COL_TYPE_COUNTER,
-                               constraint = []}
+           Schema, [#?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_COUNTER,
+                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),
@@ -107,9 +107,9 @@ histogram_1() ->
 
     ok = savanna_commons:create_schema(
            Schema, [
-                    #sv_column{name = Key,
-                               type = ?COL_TYPE_H_SLIDE,
-                               constraint = []}
+                    #?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_H_SLIDE,
+                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),
@@ -143,19 +143,19 @@ histogram_1() ->
 create_schema() ->
     SchemaName = 'test_1',
     ok = savanna_commons:create_schema(
-           SchemaName, [#sv_column{name = 'col_1',
-                                   type = ?COL_TYPE_COUNTER,
-                                   constraint = []},
-                        #sv_column{name = 'col_2',
-                                   type = ?COL_TYPE_H_UNIFORM,
-                                   constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]},
-                        #sv_column{name = 'col_3',
-                                   type = ?COL_TYPE_H_SLIDE,
-                                   constraint = []},
-                        #sv_column{name = 'col_4',
-                                   type = ?COL_TYPE_H_EXDEC,
-                                   constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000},
-                                                 {?HISTOGRAM_CONS_ALPHA,  0.018}]}
+           SchemaName, [#?SV_COLUMN{name = 'col_1',
+                                    type = ?COL_TYPE_COUNTER,
+                                    constraint = []},
+                        #?SV_COLUMN{name = 'col_2',
+                                    type = ?COL_TYPE_H_UNIFORM,
+                                    constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]},
+                        #?SV_COLUMN{name = 'col_3',
+                                    type = ?COL_TYPE_H_SLIDE,
+                                    constraint = []},
+                        #?SV_COLUMN{name = 'col_4',
+                                    type = ?COL_TYPE_H_EXDEC,
+                                    constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000},
+                                                  {?HISTOGRAM_CONS_ALPHA,  0.018}]}
                        ]),
 
     {ok, Columns_1} = svc_tbl_column:all(),
@@ -245,9 +245,9 @@ counter_metrics_2() ->
     Window = 10,
 
     ok = savanna_commons:create_schema(
-           Schema, [#sv_column{name = Key,
-                               type = ?COL_TYPE_COUNTER,
-                               constraint = []}
+           Schema, [#?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_COUNTER,
+                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
@@ -272,9 +272,9 @@ histogram_2() ->
 
     ok = savanna_commons:create_schema(
            Schema, [
-                    #sv_column{name = Key,
-                               type = ?COL_TYPE_H_SLIDE,
-                               constraint = []}
+                    #?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_H_SLIDE,
+                                constraint = []}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),
@@ -297,9 +297,9 @@ histogram_3() ->
 
     ok = savanna_commons:create_schema(
            Schema, [
-                    #sv_column{name = Key,
-                               type = ?COL_TYPE_H_UNIFORM,
-                               constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
+                    #?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_H_UNIFORM,
+                                constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),
@@ -321,9 +321,9 @@ histogram_4() ->
 
     ok = savanna_commons:create_schema(
            Schema, [
-                    #sv_column{name = Key,
-                               type = ?COL_TYPE_H_EXDEC,
-                               constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
+                    #?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_H_EXDEC,
+                                constraint = [{?HISTOGRAM_CONS_SAMPLE, SampleSize}]}
                    ]),
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),

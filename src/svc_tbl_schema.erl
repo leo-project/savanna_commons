@@ -31,7 +31,8 @@
 -export([create_table/2,
          all/0,
          get/1, update/1, delete/1,
-         checksum/0, size/0
+         checksum/0, size/0,
+         sync/1
         ]).
 
 -define(TBL_NAME, ?TBL_SCHEMAS).
@@ -133,7 +134,7 @@ delete(SchemaName) ->
 checksum() ->
     case ?MODULE:all() of
         {ok, Records} ->
-            erlang:phash2(Records);
+            erlang:phash2(lists:sort(Records));
         _ ->
             -1
     end.
@@ -145,3 +146,77 @@ checksum() ->
              pos_integer()).
 size() ->
     mnesia:table_info(?TBL_NAME, size).
+
+
+%% @doc Synchronize the table
+%%
+-spec(sync(list(#sv_schema{})) ->
+             ok | {error, any()}).
+sync(SchemasMaster) ->
+    case all() of
+        {ok, SchemasLocal} ->
+            ok = sync_1(SchemasMaster, SchemasLocal),
+            ok = sync_2(SchemasLocal,  SchemasMaster);
+        not_found ->
+            sync_1(SchemasMaster);
+        _ ->
+            ok
+    end.
+
+
+%% @private
+sync_1([]) ->
+    ok;
+sync_1([#sv_schema{} = Schema|Rest]) ->
+    case update(Schema) of
+        ok ->
+            sync_1(Rest);
+        {error, Cause} ->
+            {error, Cause}
+    end;
+sync_1(_) ->
+    {error, invalud_data_type}.
+
+
+%% @private
+sync_1([],_SchemasLocal) ->
+    ok;
+sync_1([#sv_schema{} = Schema|Rest], SchemasLocal) ->
+    ok = sync_1_1(SchemasLocal, Schema),
+    sync_1(Rest, SchemasLocal);
+sync_1(_,_) ->
+    {error, invalud_data_type}.
+
+%% @private
+sync_1_1([], SchemaMaster) ->
+    _ = update(SchemaMaster),
+    ok;
+sync_1_1([#sv_schema{name = Name} = SchemaLocal|_], #sv_schema{name = Name} = SchemaMaster) ->
+    case (SchemaLocal == SchemaMaster) of
+        true ->
+            void;
+        false ->
+            _ = update(SchemaMaster)
+    end,
+    ok;
+sync_1_1([#sv_schema{}|Rest], SchemaMaster) ->
+    sync_1_1(Rest, SchemaMaster).
+
+
+%% @private
+sync_2([],_SchemasMaster) ->
+    ok;
+sync_2([#sv_schema{} = Schema|Rest], SchemasMaster) ->
+    ok = sync_2_1(SchemasMaster, Schema),
+    sync_2(Rest, SchemasMaster);
+sync_2(_,_) ->
+    {error, invalud_data_type}.
+
+sync_2_1([], #sv_schema{name = Name}) ->
+    %% Remove unnecessary a col
+    _ = delete(Name),
+    ok;
+sync_2_1([#sv_schema{name = Name}|_], #sv_schema{name = Name}) ->
+    ok;
+sync_2_1([#sv_schema{}|Rest], SchemaLocal) ->
+    sync_2_1(Rest, SchemaLocal).

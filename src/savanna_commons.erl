@@ -33,7 +33,9 @@
          create_metrics_by_schema/5,
          notify/2, get_metric_value/2,
          get_histogram_statistics/2,
-         sync_schemas/1
+         sync_schemas/1,
+         sync_tables/2,
+         checksum/0
         ]).
 
 
@@ -68,7 +70,7 @@ new_1(Error) ->
 
 %% doc Create a new metrics or histgram from the schema
 %%
--spec(create_schema(sv_schema(), [#sv_column{}]) ->
+-spec(create_schema(sv_schema(), [#?SV_COLUMN{}]) ->
              ok | {error, any()}).
 create_schema(SchemaName, Columns) ->
     CreatedAt = leo_date:now(),
@@ -83,9 +85,9 @@ create_schema(SchemaName, Columns) ->
 %% @private
 create_schema_1(_,[],_) ->
     ok;
-create_schema_1(SchemaName, [#sv_column{} = Col|Rest], CreatedAt) ->
-    case svc_tbl_column:update(Col#sv_column{schema_name = SchemaName,
-                                             created_at  = CreatedAt}) of
+create_schema_1(SchemaName, [#?SV_COLUMN{} = Col|Rest], CreatedAt) ->
+    case svc_tbl_column:update(Col#?SV_COLUMN{schema_name = SchemaName,
+                                              created_at  = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Rest, CreatedAt);
         Error ->
@@ -138,8 +140,8 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, Callback) ->
 %% @private
 create_metrics_by_schema_1(_,[],_,_,_) ->
     ok;
-create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_COUNTER,
-                                                        name = Key}|Rest], Window, Step, Callback) ->
+create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_COUNTER,
+                                                         name = Key}|Rest], Window, Step, Callback) ->
     ok = new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
                              metric_group_name = MetricGroupName,
                              name = Key,
@@ -147,9 +149,9 @@ create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_COUNTER
                              callback = Callback}),
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
 
-create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_UNIFORM,
-                                                        constraint  = Constraint,
-                                                        name = Key}|Rest], Window, Step, Callback) ->
+create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_UNIFORM,
+                                                         constraint  = Constraint,
+                                                         name = Key}|Rest], Window, Step, Callback) ->
     HType = ?HISTOGRAM_UNIFORM,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
 
@@ -162,8 +164,8 @@ create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_UNIFO
                              callback = Callback}),
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
 
-create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_SLIDE,
-                                                        name = Key}|Rest], Window, Step, Callback) ->
+create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_SLIDE,
+                                                         name = Key}|Rest], Window, Step, Callback) ->
     HType = ?HISTOGRAM_SLIDE,
     ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                              histogram_type = HType,
@@ -173,9 +175,9 @@ create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_SLIDE
                              callback = Callback}),
     create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
 
-create_metrics_by_schema_1(MetricGroupName, [#sv_column{type = ?COL_TYPE_H_EXDEC,
-                                                        constraint  = Constraint,
-                                                        name = Key}|Rest], Window, Step, Callback) ->
+create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_EXDEC,
+                                                         constraint  = Constraint,
+                                                         name = Key}|Rest], Window, Step, Callback) ->
     HType = ?HISTOGRAM_EXDEC,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
     AlphaValue = leo_misc:get_value(?HISTOGRAM_CONS_ALPHA,  Constraint, ?DEFAULT_ALPHA),
@@ -253,6 +255,25 @@ sync_schemas(Managers) ->
     sync_tbl_schema(Managers).
 
 
+%% @doc Synchronize the tables
+%%
+-spec(sync_tables(list(#sv_schema{}), list(#?SV_COLUMN{})) ->
+             {ok, {integer(), integer()}} | {error, any()}).
+sync_tables(Schemas, Columns) ->
+    ok = svc_tbl_schema:sync(Schemas),
+    ok = svc_tbl_column:sync(Columns),
+    checksum().
+
+
+%% @doc Retrieve checksum of each table
+-spec(checksum() ->
+             {integer(), integer()}).
+checksum() ->
+    TblSchema = svc_tbl_schema:checksum(),
+    TblColumn = svc_tbl_column:checksum(),
+    {ok, {TblSchema, TblColumn}}.
+
+
 %% ===================================================================
 %% Inner Functions
 %% ===================================================================
@@ -303,7 +324,7 @@ check_type_1(ServerId, Type) ->
                     Type;
                 ok ->
                     case svc_tbl_column:get(Schema, Column) of
-                        {ok, #sv_column{type = Type}} ->
+                        {ok,#?SV_COLUMN{type = Type}} ->
                             Type;
                         Error ->
                             Error
