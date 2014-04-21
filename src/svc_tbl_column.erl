@@ -95,7 +95,9 @@ get(Schema, ColumnName) ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
                                         X#?SV_COLUMN.schema_name == Schema,
-                                        X#?SV_COLUMN.name == ColumnName]),
+                                        X#?SV_COLUMN.name == ColumnName,
+                                        X#?SV_COLUMN.del == false
+                                  ]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -142,7 +144,9 @@ find_by_schema_name(SchemaName) ->
         _ ->
             F = fun() ->
                         Q1 = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                         X#?SV_COLUMN.schema_name == SchemaName]),
+                                         X#?SV_COLUMN.schema_name == SchemaName,
+                                         X#?SV_COLUMN.del == false
+                                   ]),
                         Q2 = qlc:sort(Q1, [{order, ascending}]),
                         qlc:e(Q2)
                 end,
@@ -165,12 +169,15 @@ update(#?SV_COLUMN{schema_name = Schema,
         {'EXIT', _Cause} ->
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
+            Now = leo_date:now(),
             Col_1 = case Col#?SV_COLUMN.created_at of
                         undefined ->
                             Col#?SV_COLUMN{id = {Schema, ColName},
-                                           created_at = leo_date:now()};
+                                           updated_at = Now,
+                                           created_at = Now};
                         _ ->
-                            Col#?SV_COLUMN{id = {Schema, ColName}}
+                            Col#?SV_COLUMN{id = {Schema, ColName},
+                                           updated_at = Now}
                     end,
             F = fun()-> mnesia:write(?TBL_NAME, Col_1, write) end,
             leo_mnesia:write(F)
@@ -197,10 +204,7 @@ delete(Id) ->
 delete(Schema, ColName) ->
     case ?MODULE:get(Schema, ColName) of
         {ok, Col} ->
-            Fun = fun() ->
-                          mnesia:delete_object(?TBL_NAME, Col, write)
-                  end,
-            leo_mnesia:delete(Fun);
+            update(Col#?SV_COLUMN{del = true});
         Error ->
             Error
     end.

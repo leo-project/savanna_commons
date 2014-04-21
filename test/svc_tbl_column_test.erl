@@ -183,24 +183,28 @@ suite() ->
     mnesia:start(),
 
     SchemaName = 'test',
+    Now =  leo_date:now(),
     Col_1 = #?SV_COLUMN{id = {SchemaName, 'col_1'},
                         schema_name = SchemaName,
                         name = 'col_1',
                         type = ?COL_TYPE_COUNTER,
                         constraint = [{min, 0}, {max, 16384}],
-                        created_at = leo_date:now()},
+                        updated_at = Now,
+                        created_at = Now},
     Col_2 = #?SV_COLUMN{id = {SchemaName, 'col_2'},
                         schema_name = SchemaName,
                         name = 'col_2',
                         type = ?COL_TYPE_H_SLIDE,
                         constraint = [],
-                        created_at = leo_date:now()},
+                        updated_at = Now,
+                        created_at = Now},
     Col_3 = #?SV_COLUMN{id = {SchemaName, 'col_3'},
                         schema_name = SchemaName,
                         name = 'col_3',
                         type = ?COL_TYPE_H_UNIFORM,
                         constraint = [],
-                        created_at = leo_date:now()},
+                        updated_at = Now,
+                        created_at = Now},
 
 
     {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
@@ -232,7 +236,7 @@ suite() ->
     ?assertEqual(true, Checksum_1 /= Checksum_2),
 
     Size_2 = svc_tbl_column:size(),
-    ?assertEqual(2, Size_2),
+    ?assertEqual(3, Size_2),
 
     mnesia:stop(),
     ok.
