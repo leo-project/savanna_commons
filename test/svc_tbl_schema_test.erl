@@ -60,8 +60,8 @@ sync() ->
     Schema_2 = ?SCHEMA_2,
     Schema_3 = ?SCHEMA_3,
 
-    ok = svc_tbl_schema:update(Schema_1),
-    ok = svc_tbl_schema:update(Schema_2),
+    ok = svc_tbl_schema:insert(Schema_1),
+    ok = svc_tbl_schema:insert(Schema_2),
 
     ok = svc_tbl_schema:sync([Schema_1,
                               Schema_3]),
@@ -88,8 +88,8 @@ suite() ->
     not_found = svc_tbl_schema:get(?SCHEMA_1),
     not_found = svc_tbl_schema:get(?SCHEMA_2),
 
-    ok = svc_tbl_schema:update(?SCHEMA_1),
-    ok = svc_tbl_schema:update(?SCHEMA_2),
+    ok = svc_tbl_schema:insert(?SCHEMA_1),
+    ok = svc_tbl_schema:insert(?SCHEMA_2),
     Checksum_1 = svc_tbl_schema:checksum(),
     2 = svc_tbl_schema:size(),
 

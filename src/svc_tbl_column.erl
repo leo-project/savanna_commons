@@ -32,7 +32,7 @@
          all/0, get/2,
          find_by_id/1,
          find_by_schema_name/1,
-         update/1, delete/1, delete/2,
+         insert/1, update/1, delete/1, delete/2,
          checksum/0, checksum/1, size/0,
          sync/1,
          transform/0
@@ -157,6 +157,14 @@ find_by_schema_name(SchemaName) ->
                     Other
             end
     end.
+
+
+%% @doc Insert a schema
+%%
+-spec(insert(#?SV_COLUMN{}) ->
+             ok | {error, any()}).
+insert(#?SV_COLUMN{} = Col) ->
+    update(Col).
 
 
 %% @doc Modify a schema

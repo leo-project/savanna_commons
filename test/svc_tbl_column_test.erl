@@ -212,9 +212,9 @@ suite() ->
     not_found = svc_tbl_column:get(Col_1#?SV_COLUMN.schema_name,
                                    Col_1#?SV_COLUMN.name),
 
-    ok = svc_tbl_column:update(Col_1),
-    ok = svc_tbl_column:update(Col_2),
-    ok = svc_tbl_column:update(Col_3),
+    ok = svc_tbl_column:insert(Col_1),
+    ok = svc_tbl_column:insert(Col_2),
+    ok = svc_tbl_column:insert(Col_3),
 
     {ok, Ret_1} = svc_tbl_column:get(Col_1#?SV_COLUMN.schema_name, Col_1#?SV_COLUMN.name),
     {ok, Ret_2} = svc_tbl_column:get(Col_2#?SV_COLUMN.schema_name, Col_2#?SV_COLUMN.name),

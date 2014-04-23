@@ -63,9 +63,9 @@ suite() ->
     not_found = svc_tbl_metric_group:all(),
     not_found = svc_tbl_metric_group:get(MetricGrp_1#sv_metric_group.name),
 
-    ok = svc_tbl_metric_group:update(MetricGrp_1),
-    ok = svc_tbl_metric_group:update(MetricGrp_2),
-    ok = svc_tbl_metric_group:update(MetricGrp_3),
+    ok = svc_tbl_metric_group:insert(MetricGrp_1),
+    ok = svc_tbl_metric_group:insert(MetricGrp_2),
+    ok = svc_tbl_metric_group:insert(MetricGrp_3),
 
     {ok, Ret_1} = svc_tbl_metric_group:get(MetricGrp_1#sv_metric_group.name),
     {ok, Ret_2} = svc_tbl_metric_group:get(MetricGrp_2#sv_metric_group.name),

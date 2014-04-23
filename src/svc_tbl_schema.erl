@@ -30,7 +30,7 @@
 %% API
 -export([create_table/2,
          all/0,
-         get/1, update/1, delete/1,
+         get/1, insert/1, update/1, delete/1,
          checksum/0, size/0,
          sync/1
         ]).
@@ -95,6 +95,14 @@ get(SchemaName) ->
                     Other
             end
     end.
+
+
+%% @doc Insert a schema
+%%
+-spec(insert(#sv_schema{}) ->
+             ok | {error, any()}).
+insert(#sv_schema{} = Schema) ->
+    insert(Schema).
 
 
 %% @doc Modify a schema
