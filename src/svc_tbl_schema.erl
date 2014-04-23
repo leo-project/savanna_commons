@@ -102,7 +102,7 @@ get(SchemaName) ->
 -spec(insert(#sv_schema{}) ->
              ok | {error, any()}).
 insert(#sv_schema{} = Schema) ->
-    insert(Schema).
+    update(Schema).
 
 
 %% @doc Modify a schema
