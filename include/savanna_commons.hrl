@@ -130,8 +130,8 @@
                          }).
 
 -record(sv_schema, {
-          name       :: sv_schema(),
-          created_at :: pos_integer()
+          name           :: sv_schema(),
+          created_at = 0 :: pos_integer()
          }).
 
 -record(sv_column, {

@@ -179,7 +179,7 @@ update(#?SV_COLUMN{schema_name = Schema,
         _ ->
             Now = leo_date:now(),
             Col_1 = case Col#?SV_COLUMN.created_at of
-                        undefined ->
+                        0 ->
                             Col#?SV_COLUMN{id = {Schema, ColName},
                                            updated_at = Now,
                                            created_at = Now};
