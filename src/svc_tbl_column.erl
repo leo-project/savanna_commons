@@ -178,16 +178,16 @@ update(#?SV_COLUMN{schema_name = Schema,
             {error, ?ERROR_MNESIA_NOT_START};
         _ ->
             Now = leo_date:now(),
-            Col_1 = case Col#?SV_COLUMN.created_at of
-                        0 ->
-                            Col#?SV_COLUMN{id = {Schema, ColName},
-                                           updated_at = Now,
-                                           created_at = Now};
-                        _ ->
-                            Col#?SV_COLUMN{id = {Schema, ColName},
-                                           updated_at = Now}
+            Col_1 = Col#?SV_COLUMN{id = {Schema, ColName}},
+            Col_2 = case Col#?SV_COLUMN.created_at of
+                        0 -> Col_1#?SV_COLUMN{created_at = Now};
+                        _ -> Col_1
                     end,
-            F = fun()-> mnesia:write(?TBL_NAME, Col_1, write) end,
+            Col_3 = case Col_2#?SV_COLUMN.updated_at of
+                        0 -> Col_2#?SV_COLUMN{updated_at = Now};
+                        _ -> Col_2
+                    end,
+            F = fun()-> mnesia:write(?TBL_NAME, Col_3, write) end,
             leo_mnesia:write(F)
     end.
 
