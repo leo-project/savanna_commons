@@ -1,5 +1,15 @@
 # CHANGELOG
 
+
+## 0.6.3 (May 8, 2014)
+
+* Bump leo_rpc to 0.8.3
+* Improved
+    * To correctly synchronization of tables
+    * Modifued deletion of column tables
+    * Took over sync-fun from savanna-agent to savanna-commons
+
+
 ## 0.6.2 (Mar 29, 2014)
 
 * Bump leo_commons to 1.0.1
@@ -29,6 +39,7 @@
 ## 0.4.3 (Feb 20, 2014)
 
 * Improved the performance
+
 
 ## 0.4.2 (Feb 18, 2014)
 
