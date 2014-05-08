@@ -31,7 +31,7 @@
 -export([create_table/2,
          all/0,
          get/1, find_by_schema_name/1,
-         update/1, delete/1,
+         insert/1, update/1, delete/1,
          checksum/1, size/0
         ]).
 
@@ -124,6 +124,14 @@ find_by_schema_name(SchemaName) ->
                     Other
             end
     end.
+
+
+%% @doc Insert a schema
+%%
+-spec(insert(#sv_metric_group{}) ->
+             ok | {error, any()}).
+insert(#sv_metric_group{} = MetricGroup) ->
+    update(MetricGroup).
 
 
 %% @doc Modify a schema

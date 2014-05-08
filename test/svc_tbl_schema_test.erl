@@ -25,43 +25,87 @@
 -include("savanna_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-define(SCHEMA_NAME_1, 'test_1').
+-define(SCHEMA_NAME_2, 'test_2').
+-define(SCHEMA_NAME_3, 'test_3').
+-define(SCHEMA_1, #sv_schema{name = ?SCHEMA_NAME_1,
+                             created_at = leo_date:now()}).
+-define(SCHEMA_2, #sv_schema{name = ?SCHEMA_NAME_2,
+                             created_at = leo_date:now()}).
+-define(SCHEMA_3, #sv_schema{name = ?SCHEMA_NAME_3,
+                             created_at = leo_date:now()}).
+
 suite_test_() ->
     {setup,
      fun () ->
-             mnesia:start()
+             ok
      end,
      fun (_) ->
-             mnesia:stop()
+             ok
      end,
-     [{"test all functions",
-       {timeout, 30, fun suite/0}}
+     [
+      {"test sync table",
+       {timeout, 30, fun sync/0}
+      },
+      {"test all functions",
+       {timeout, 30, fun suite/0}
+      }
      ]}.
 
+sync() ->
+    mnesia:start(),
+
+    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    Schema_1 = ?SCHEMA_1,
+    Schema_2 = ?SCHEMA_2,
+    Schema_3 = ?SCHEMA_3,
+
+    ok = svc_tbl_schema:insert(Schema_1),
+    ok = svc_tbl_schema:insert(Schema_2),
+
+    ok = svc_tbl_schema:sync([Schema_1,
+                              Schema_3]),
+    {ok, Ret} = svc_tbl_schema:all(),
+    ?assertEqual(2, length(Ret)),
+
+    lists:foreach(fun(S) when S == Schema_1 ->
+                          ok;
+                     (S) when S == Schema_3 ->
+                          ok;
+                     (_) ->
+                          throw('bad_record')
+                  end, Ret),
+
+    mnesia:stop(),
+    ok.
+
+
 suite() ->
-    SchemaName_1 = 'test_1',
-    SchemaName_2 = 'test_2',
-    Schema_1 = #sv_schema{name = SchemaName_1,
-                          created_at = leo_date:now()},
-    Schema_2 = #sv_schema{name = SchemaName_2,
-                          created_at = leo_date:now()},
+    mnesia:start(),
 
     {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
     not_found = svc_tbl_schema:all(),
-    not_found = svc_tbl_schema:get(SchemaName_1),
-    not_found = svc_tbl_schema:get(SchemaName_2),
+    not_found = svc_tbl_schema:get(?SCHEMA_1),
+    not_found = svc_tbl_schema:get(?SCHEMA_2),
 
-    ok = svc_tbl_schema:update(Schema_1),
-    ok = svc_tbl_schema:update(Schema_2),
+    ok = svc_tbl_schema:insert(?SCHEMA_1),
+    ok = svc_tbl_schema:insert(?SCHEMA_2),
     Checksum_1 = svc_tbl_schema:checksum(),
     2 = svc_tbl_schema:size(),
 
-    {ok, Schema_1} = svc_tbl_schema:get(SchemaName_1),
-    {ok, Schema_2} = svc_tbl_schema:get(SchemaName_2),
-    ok = svc_tbl_schema:delete(SchemaName_1),
-    not_found = svc_tbl_schema:get(SchemaName_1),
+    {ok, _S1} = svc_tbl_schema:get(?SCHEMA_NAME_1),
+    {ok, _S2} = svc_tbl_schema:get(?SCHEMA_NAME_2),
+
+    ?assertEqual(?SCHEMA_1, _S1),
+    ?assertEqual(?SCHEMA_2, _S2),
+
+    ok = svc_tbl_schema:delete(?SCHEMA_NAME_1),
+    not_found = svc_tbl_schema:get(?SCHEMA_NAME_1),
 
     Checksum_2 = svc_tbl_schema:checksum(),
     ?assertEqual(true, Checksum_1 /= Checksum_2),
 
     1 = svc_tbl_schema:size(),
+
+    mnesia:stop(),
     ok.

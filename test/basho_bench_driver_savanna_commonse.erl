@@ -51,7 +51,7 @@ new(1) ->
 
     %% create metrics
     ok = savanna_commons:create_schema(
-           ?SCHEMA, [#sv_column{name = ?COL,
+           ?SCHEMA, [#?SV_COLUMN{name = ?COL,
                                 type = 'counter',
                                 constraint = []}
                     ]),

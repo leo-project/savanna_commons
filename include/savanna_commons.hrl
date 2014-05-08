@@ -71,7 +71,8 @@
 -ifdef(TEST).
 -define(SV_EXPIRATION_TIME, 60). %% 60sec (1min)
 -else.
--define(SV_EXPIRATION_TIME, 'infinity').
+-define(SV_EXPIRATION_TIME, 60).
+%% -define(SV_EXPIRATION_TIME, 'infinity').
 -endif.
 
 
@@ -129,8 +130,8 @@
                          }).
 
 -record(sv_schema, {
-          name       :: sv_schema(),
-          created_at :: pos_integer()
+          name           :: sv_schema(),
+          created_at = 0 :: pos_integer()
          }).
 
 -record(sv_column, {
@@ -139,8 +140,19 @@
           name            :: sv_key(),
           type            :: sv_column_type(),
           constraint = [] :: list(),
-          created_at      :: pos_integer()
+          created_at = 0  :: pos_integer()
          }).
+-record(sv_column_1, {
+          id              :: pos_integer(),
+          schema_name     :: sv_schema(),
+          name            :: sv_key(),
+          type            :: sv_column_type(),
+          constraint = [] :: list(),
+          updated_at = 0  :: pos_integer(),
+          created_at = 0  :: pos_integer(),
+          del = false     :: boolean()
+         }).
+-define(SV_COLUMN, 'sv_column_1').
 
 -record(sv_metric_group, {
           id          :: pos_integer(),
