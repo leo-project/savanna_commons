@@ -5,3 +5,6 @@ deps
 *.plt
 erl_crash.dump
 ebin/
+.savanna_commons_dialyzer_plt
+savanna_commons.dot
+savanna_commons.png
