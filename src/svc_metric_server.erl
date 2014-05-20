@@ -47,7 +47,7 @@
 -define(DEF_TIMEOUT, 30000).
 -define(HOURSECS,    3600).
 
--record(metric, {tags = sets:new() :: set(),
+-record(metric, {tags = sets:new() :: sets:set(),
                  type :: atom(),
                  history_size :: pos_integer()
                 }).
