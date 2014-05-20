@@ -48,7 +48,7 @@ start_link() ->
 
 %% @doc Start children
 %%
--spec(start_child('svc_metrics_counter', atom(), #sv_metric_conf{}) ->
+-spec(start_child(mod_sv_metrics(), atom(), #sv_metric_conf{}) ->
              ok | {error, any()}).
 start_child('svc_metrics_counter' = Mod, ServerId, MetricConf) ->
     #sv_metric_conf{window   = Window,

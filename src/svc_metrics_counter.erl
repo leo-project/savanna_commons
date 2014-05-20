@@ -49,7 +49,7 @@ handle_get_histogram_statistics(_) ->
 
 %% @doc Input a value into the sample
 handle_update(_,_,_) ->
-    ok.
+    0.
 
 
 %% @doc Remove oldest values and notify metric with callback-func

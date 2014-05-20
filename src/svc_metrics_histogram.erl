@@ -48,6 +48,10 @@ handle_get_histogram_statistics(Hist) ->
 
 
 %% @doc Insert the value
+-spec(handle_update(?HISTOGRAM_SLIDE   |
+                    ?HISTOGRAM_UNIFORM |
+                    ?HISTOGRAM_EXDEC, #uniform{}, any()) ->
+             #slide{} | #uniform{} | #exdec{}).
 handle_update(?HISTOGRAM_SLIDE, Sample, Value) ->
     folsom_sample_slide:update(Sample, Value);
 handle_update(?HISTOGRAM_UNIFORM, Sample, Value) ->
