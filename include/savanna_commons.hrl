@@ -37,6 +37,14 @@
 -define(METRIC_HISTORY,   'history').
 -type(sv_metric_type() :: ?METRIC_COUNTER | ?METRIC_HISTOGRAM | ?METRIC_HISTORY).
 
+
+-define(MOD_METRICS_COUNTER,   'svc_metrics_counter').
+-define(MOD_METRICS_HISTOGRAM, 'svc_metrics_histogram').
+-type(mod_sv_metrics() :: ?MOD_METRICS_COUNTER |
+                          ?MOD_METRICS_HISTOGRAM).
+
+
+
 -define(HISTOGRAM_UNIFORM,       'uniform').
 -define(HISTOGRAM_EXDEC,         'exdec').
 -define(HISTOGRAM_SLIDE,         'slide').
@@ -120,46 +128,46 @@
 %% Records
 -record(sv_metric_state, {id :: atom(),
                           sample_mod  :: atom(),
-                          type        :: sv_histogram_type(),
+                          type        :: sv_histogram_type() | ?METRIC_COUNTER,
                           notify_to   :: atom(),
                           window      :: pos_integer(),
                           step        :: pos_integer(),
-                          expire_time :: pos_integer(),
+                          expire_time :: pos_integer() | 'infinity',
                           updated_at  :: pos_integer(),
                           trimed_at   :: pos_integer()
                          }).
 
 -record(sv_schema, {
           name           :: sv_schema(),
-          created_at = 0 :: pos_integer()
+          created_at = 0 :: integer()
          }).
 
 -record(sv_column, {
-          id              :: pos_integer(),
+          id              :: any(),
           schema_name     :: sv_schema(),
           name            :: sv_key(),
           type            :: sv_column_type(),
           constraint = [] :: list(),
-          created_at = 0  :: pos_integer()
+          created_at = 0  :: integer()
          }).
 -record(sv_column_1, {
-          id              :: pos_integer(),
+          id              :: any(),
           schema_name     :: sv_schema(),
           name            :: sv_key(),
           type            :: sv_column_type(),
           constraint = [] :: list(),
-          updated_at = 0  :: pos_integer(),
-          created_at = 0  :: pos_integer(),
+          updated_at = 0  :: integer(),
+          created_at = 0  :: integer(),
           del = false     :: boolean()
          }).
 -define(SV_COLUMN, 'sv_column_1').
 
 -record(sv_metric_group, {
-          id          :: pos_integer(),
+          id          :: any(),
           schema_name :: sv_schema(),
           name        :: sv_metric_grp(),
-          window = 0  :: pos_integer(),
-          step   = 0  :: pos_integer(),
+          window = 0  :: integer(),
+          step   = 0  :: integer(),
           callback    :: atom(),
           created_at  :: pos_integer() %% see:'svc_notify_behaviour'
          }).
@@ -169,8 +177,8 @@
           histogram_type    :: sv_histogram_type(),
           metric_group_name :: sv_metric_grp(),
           name              :: sv_key(),
-          window = 0        :: pos_integer(),
-          step = 0          :: pos_integer(),
+          window = 0        :: integer(),
+          step = 0          :: integer(),
           sample_size = -1  :: integer(),
           alpha = 0.0       :: float(),
           callback          :: atom()

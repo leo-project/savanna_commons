@@ -136,7 +136,7 @@ find_by_id(Id) ->
 %% @doc Retrieve a schema by name
 %%
 -spec(find_by_schema_name(sv_schema()) ->
-             {ok,#?SV_COLUMN{}} | not_found | {error, any()}).
+             {ok, [#?SV_COLUMN{}]} | not_found | {error, any()}).
 find_by_schema_name(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -225,7 +225,7 @@ delete(Schema, ColName) ->
 checksum() ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
-            {error, ?ERROR_MNESIA_NOT_START};
+            -1;
         _ ->
             case ?MODULE:all() of
                 {ok, Records} ->
@@ -325,10 +325,9 @@ sync_2([],_ColsMaster) ->
     ok;
 sync_2([#?SV_COLUMN{} = Col|Rest], ColsMaster) ->
     ok = sync_2_1(ColsMaster, Col),
-    sync_2(Rest, ColsMaster);
-sync_2(_,_) ->
-    {error, invalud_data_type}.
+    sync_2(Rest, ColsMaster).
 
+%% @private
 sync_2_1([], #?SV_COLUMN{id = Id}) ->
     %% @TODO - remove unnecessary a col
     _ = delete(Id),

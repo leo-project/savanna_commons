@@ -37,8 +37,10 @@
 
 
 %% @doc Input a value into the sample
--callback(handle_update(sv_histogram_type(), #slide{}|#uniform{}|#exdec{}, Value::any()) ->
-                 ok | {error, any()}).
+-callback(handle_update(?HISTOGRAM_SLIDE   |
+                        ?HISTOGRAM_UNIFORM |
+                        ?HISTOGRAM_EXDEC, #slide{}|#uniform{}|#exdec{}, any()) ->
+             #slide{} | #uniform{} | #exdec{} | integer()).
 
 
 %% @doc Input a value into the sample

@@ -216,9 +216,7 @@ sync_2([],_SchemasMaster) ->
     ok;
 sync_2([#sv_schema{} = Schema|Rest], SchemasMaster) ->
     ok = sync_2_1(SchemasMaster, Schema),
-    sync_2(Rest, SchemasMaster);
-sync_2(_,_) ->
-    {error, invalud_data_type}.
+    sync_2(Rest, SchemasMaster).
 
 sync_2_1([], #sv_schema{name = Name}) ->
     %% Remove unnecessary a col

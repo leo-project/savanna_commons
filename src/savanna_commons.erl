@@ -78,11 +78,13 @@ create_schema(SchemaName, Columns) ->
                                           created_at = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Columns, CreatedAt);
-        Error ->
-            Error
+        {error, Cause} ->
+            {error, Cause}
     end.
 
 %% @private
+-spec(create_schema_1(sv_schema(), [_], non_neg_integer()) ->
+             ok | {error, any()}).
 create_schema_1(_,[],_) ->
     ok;
 create_schema_1(SchemaName, [#?SV_COLUMN{} = Col|Rest], CreatedAt) ->
@@ -90,8 +92,8 @@ create_schema_1(SchemaName, [#?SV_COLUMN{} = Col|Rest], CreatedAt) ->
                                               created_at  = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Rest, CreatedAt);
-        Error ->
-            Error
+        {error, Cause} ->
+            {error, Cause}
     end;
 create_schema_1(_,_,_) ->
     {error, invalid_args}.
@@ -99,21 +101,21 @@ create_schema_1(_,_,_) ->
 
 %% doc Create a new metrics or histgram by the schema
 %%
--spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(), function()) ->
-             ok | {error, any()}).
-create_metrics_by_schema(SchemaName, MetricGroupName, Callback) ->
-    create_metrics_by_schema(SchemaName, MetricGroupName, ?SV_WINDOW_1M, Callback).
+-spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(), atom()) ->
+             ok | not_found | {error, any()}).
+create_metrics_by_schema(SchemaName, MetricGroupName, CallbackMod) ->
+    create_metrics_by_schema(SchemaName, MetricGroupName, ?SV_WINDOW_1M, CallbackMod).
 
 -spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
-                               pos_integer(), function()) ->
-             ok | {error, any()}).
-create_metrics_by_schema(SchemaName, MetricGroupName, Window, Callback) ->
-    create_metrics_by_schema(SchemaName, MetricGroupName, Window, ?SV_STEP_1M, Callback).
+                               integer(), atom()) ->
+             ok | not_found | {error, any()}).
+create_metrics_by_schema(SchemaName, MetricGroupName, Window, CallbackMod) ->
+    create_metrics_by_schema(SchemaName, MetricGroupName, Window, ?SV_STEP_1M, CallbackMod).
 
 -spec(create_metrics_by_schema(sv_schema(), sv_metric_grp(),
-                               pos_integer(), pos_integer(), function()) ->
-             ok | {error, any()}).
-create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, Callback) ->
+                               integer(), integer(), atom()) ->
+             ok | not_found | {error, any()}).
+create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, CallbackMod) ->
     case svc_tbl_schema:get(SchemaName) of
         {ok,_} ->
             case svc_tbl_column:find_by_schema_name(SchemaName) of
@@ -123,10 +125,10 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, Callback) ->
                                             name     = MetricGroupName,
                                             window   = Window,
                                             step     = Step,
-                                            callback = Callback}) of
+                                            callback = CallbackMod}) of
                         ok ->
                             create_metrics_by_schema_1(
-                              MetricGroupName, Columns, Window, Step, Callback);
+                              MetricGroupName, Columns, Window, Step, CallbackMod);
                         Error ->
                             Error
                     end;
@@ -138,20 +140,22 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, Callback) ->
     end.
 
 %% @private
+-spec(create_metrics_by_schema_1(atom(),[#?SV_COLUMN{}], integer(), integer(), atom()) ->
+             ok | {error, any()}).
 create_metrics_by_schema_1(_,[],_,_,_) ->
     ok;
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_COUNTER,
-                                                         name = Key}|Rest], Window, Step, Callback) ->
+                                                         name = Key}|Rest], Window, Step, CallbackMod) ->
     ok = new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
                              metric_group_name = MetricGroupName,
                              name = Key,
                              window = Window,
-                             callback = Callback}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+                             callback = CallbackMod}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_UNIFORM,
                                                          constraint  = Constraint,
-                                                         name = Key}|Rest], Window, Step, Callback) ->
+                                                         name = Key}|Rest], Window, Step, CallbackMod) ->
     HType = ?HISTOGRAM_UNIFORM,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
 
@@ -161,23 +165,23 @@ create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_UNIF
                              name = Key,
                              window = Window,
                              sample_size = SampleSize,
-                             callback = Callback}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+                             callback = CallbackMod}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_SLIDE,
-                                                         name = Key}|Rest], Window, Step, Callback) ->
+                                                         name = Key}|Rest], Window, Step, CallbackMod) ->
     HType = ?HISTOGRAM_SLIDE,
     ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                              histogram_type = HType,
                              metric_group_name = MetricGroupName,
                              name = Key,
                              window = Window,
-                             callback = Callback}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+                             callback = CallbackMod}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_EXDEC,
                                                          constraint  = Constraint,
-                                                         name = Key}|Rest], Window, Step, Callback) ->
+                                                         name = Key}|Rest], Window, Step, CallbackMod) ->
     HType = ?HISTOGRAM_EXDEC,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
     AlphaValue = leo_misc:get_value(?HISTOGRAM_CONS_ALPHA,  Constraint, ?DEFAULT_ALPHA),
@@ -189,8 +193,8 @@ create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_EXDE
                              window = Window,
                              sample_size = SampleSize,
                              alpha = AlphaValue,
-                             callback = Callback}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, Callback);
+                             callback = CallbackMod}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
 create_metrics_by_schema_1(_,_,_,_,_) ->
     {error, invalid_args}.
 
@@ -267,7 +271,7 @@ sync_tables(Schemas, Columns) ->
 
 %% @doc Retrieve checksum of each table
 -spec(checksum() ->
-             {integer(), integer()}).
+             {ok, {integer(), integer()}}).
 checksum() ->
     TblSchema = svc_tbl_schema:checksum(),
     TblColumn = svc_tbl_column:checksum(),
@@ -278,6 +282,8 @@ checksum() ->
 %% Inner Functions
 %% ===================================================================
 %% @private
+-spec(check_type(atom()) ->
+             {ok, atom()} | {error, any()}).
 check_type(ServerId) ->
     case check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], ServerId) of
         not_found ->
@@ -317,15 +323,15 @@ check_type_1(ServerId, Type) ->
         {ok, #sv_metric_group{schema_name = Schema,
                               name = MetricGroup,
                               window = Window,
-                              callback = Callback}} ->
+                              callback = CallbackMod}} ->
             case create_metrics_by_schema(
-                   Schema, MetricGroup, Window, Callback) of
+                   Schema, MetricGroup, Window, CallbackMod) of
                 ok when Type =/= undefind ->
-                    Type;
+                    {ok, Type};
                 ok ->
                     case svc_tbl_column:get(Schema, Column) of
                         {ok,#?SV_COLUMN{type = Type}} ->
-                            Type;
+                            {ok, Type};
                         Error ->
                             Error
                     end;
@@ -333,7 +339,7 @@ check_type_1(ServerId, Type) ->
                     Error
             end;
         _ ->
-            not_found
+            {error, not_found}
     end.
 
 
