@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.6.4 (May 26, 2014)
+
+* Support to execute dialyzer
+
 
 ## 0.6.3 (May 8, 2014)
 
