@@ -70,7 +70,9 @@
                           ?COL_TYPE_H_UNIFORM |
                           ?COL_TYPE_H_SLIDE |
                           ?COL_TYPE_H_EXDEC |
-                          ?COL_TYPE_HISTORY).
+                          ?COL_TYPE_HISTORY |
+                          undefined
+                          ).
 
 -define(SV_PREFIX_NAME, "sv_").
 
