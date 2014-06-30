@@ -31,7 +31,7 @@
 %% API
 -export([start_link/0,
          start_child/3,
-         stop_slide_server/1
+         stop_child/1
         ]).
 
 %% Supervisor callbacks
@@ -90,18 +90,18 @@ start_child('svc_metrics_histogram' = Mod, ServerId, MetricConf) ->
 
 %% @doc Stop a slide-server and a worker
 %%
--spec(stop_slide_server(list(pid())) ->
+-spec(stop_child(list(pid())) ->
              ok).
-stop_slide_server(Pids) ->
-    stop_slide_server_1(Pids).
+stop_child(Pids) ->
+    stop_child_1(Pids).
 
 %% @private
-stop_slide_server_1([]) ->
+stop_child_1([]) ->
     ok;
-stop_slide_server_1([Pid|Rest]) ->
+stop_child_1([Pid|Rest]) ->
     catch supervisor:terminate_child(?MODULE, Pid),
     catch supervisor:delete_child(?MODULE, Pid),
-    stop_slide_server_1(Rest).
+    stop_child_1(Rest).
 
 
 %% ===================================================================

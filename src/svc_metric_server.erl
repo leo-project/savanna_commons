@@ -331,7 +331,7 @@ judge_trim_and_notify(#sv_metric_state{id = ServerId,
                 true ->
                     Delay = erlang:phash(Now, 500),
                     timer:apply_after(Delay, savanna_commons_sup,
-                                      stop_slide_server, [[ServerId]]),
+                                      stop_child, [[ServerId]]),
                     State;
                 false ->
                     trim_and_notify_1(State)

@@ -30,9 +30,10 @@
 %% API
 -export([create_table/2,
          all/0,
-         get/1, insert/1, update/1, delete/1,
+         get/1, find_by_name_string/1,
+         insert/1, update/1, delete/1,
          checksum/0, size/0,
-         sync/1
+         sync/1, transform/0
         ]).
 
 -define(TBL_NAME, ?TBL_SCHEMAS).
@@ -48,18 +49,19 @@ create_table(Mode, Nodes) ->
       ?TBL_NAME,
       [{Mode, Nodes},
        {type, set},
-       {record_name, sv_schema},
-       {attributes, record_info(fields, sv_schema)},
+       {record_name, ?SV_SCHEMA},
+       {attributes, record_info(fields, ?SV_SCHEMA)},
        {user_properties,
-        [{name,       atom,        primary},
-         {created_at, pos_integer, false  }
+        [{name,        atom,        primary},
+         {name_string, string,      false  },
+         {created_at,  pos_integer, false  }
         ]}
       ]).
 
 %% @doc Retrieve all records
 %%
 -spec(all() ->
-             {ok, [#sv_schema{}]} | not_found | {error, any()}).
+             {ok, [#?SV_SCHEMA{}]} | not_found | {error, any()}).
 all() ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -77,7 +79,7 @@ all() ->
 %% @doc Retrieve a schema by name
 %%
 -spec(get(sv_schema()) ->
-             {ok, #sv_schema{}} | not_found | {error, any()}).
+             {ok, #?SV_SCHEMA{}} | not_found | {error, any()}).
 get(SchemaName) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
         {'EXIT', _Cause} ->
@@ -85,7 +87,30 @@ get(SchemaName) ->
         _ ->
             F = fun() ->
                         Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
-                                        X#sv_schema.name == SchemaName]),
+                                        X#?SV_SCHEMA.name == SchemaName]),
+                        qlc:e(Q)
+                end,
+            case leo_mnesia:read(F) of
+                {ok, [H|_]} ->
+                    {ok, H};
+                Other ->
+                    Other
+            end
+    end.
+
+
+%% @doc Retrieve a schema by name
+%%
+-spec(find_by_name_string(string()) ->
+             {ok, #?SV_SCHEMA{}} | not_found | {error, any()}).
+find_by_name_string(SchemaNameStr) ->
+    case catch mnesia:table_info(?TBL_NAME, all) of
+        {'EXIT', _Cause} ->
+            {error, ?ERROR_MNESIA_NOT_START};
+        _ ->
+            F = fun() ->
+                        Q = qlc:q([X || X <- mnesia:table(?TBL_NAME),
+                                        X#?SV_SCHEMA.name_string == SchemaNameStr]),
                         qlc:e(Q)
                 end,
             case leo_mnesia:read(F) of
@@ -99,15 +124,15 @@ get(SchemaName) ->
 
 %% @doc Insert a schema
 %%
--spec(insert(#sv_schema{}) ->
+-spec(insert(#?SV_SCHEMA{}) ->
              ok | {error, any()}).
-insert(#sv_schema{} = Schema) ->
+insert(#?SV_SCHEMA{} = Schema) ->
     update(Schema).
 
 
 %% @doc Modify a schema
 %%
--spec(update(#sv_schema{}) ->
+-spec(update(#?SV_SCHEMA{}) ->
              ok | {error, any()}).
 update(Schema) ->
     case catch mnesia:table_info(?TBL_NAME, all) of
@@ -158,7 +183,7 @@ size() ->
 
 %% @doc Synchronize the table
 %%
--spec(sync(list(#sv_schema{})) ->
+-spec(sync(list(#?SV_SCHEMA{})) ->
              ok | {error, any()}).
 sync(SchemasMaster) ->
     case all() of
@@ -175,7 +200,7 @@ sync(SchemasMaster) ->
 %% @private
 sync_1([]) ->
     ok;
-sync_1([#sv_schema{} = Schema|Rest]) ->
+sync_1([#?SV_SCHEMA{} = Schema|Rest]) ->
     case update(Schema) of
         ok ->
             sync_1(Rest);
@@ -189,7 +214,7 @@ sync_1(_) ->
 %% @private
 sync_1([],_SchemasLocal) ->
     ok;
-sync_1([#sv_schema{} = Schema|Rest], SchemasLocal) ->
+sync_1([#?SV_SCHEMA{} = Schema|Rest], SchemasLocal) ->
     ok = sync_1_1(SchemasLocal, Schema),
     sync_1(Rest, SchemasLocal);
 sync_1(_,_) ->
@@ -199,7 +224,7 @@ sync_1(_,_) ->
 sync_1_1([], SchemaMaster) ->
     _ = update(SchemaMaster),
     ok;
-sync_1_1([#sv_schema{name = Name} = SchemaLocal|_], #sv_schema{name = Name} = SchemaMaster) ->
+sync_1_1([#?SV_SCHEMA{name = Name} = SchemaLocal|_], #?SV_SCHEMA{name = Name} = SchemaMaster) ->
     case (SchemaLocal == SchemaMaster) of
         true ->
             void;
@@ -207,22 +232,44 @@ sync_1_1([#sv_schema{name = Name} = SchemaLocal|_], #sv_schema{name = Name} = Sc
             _ = update(SchemaMaster)
     end,
     ok;
-sync_1_1([#sv_schema{}|Rest], SchemaMaster) ->
+sync_1_1([#?SV_SCHEMA{}|Rest], SchemaMaster) ->
     sync_1_1(Rest, SchemaMaster).
 
 
 %% @private
 sync_2([],_SchemasMaster) ->
     ok;
-sync_2([#sv_schema{} = Schema|Rest], SchemasMaster) ->
+sync_2([#?SV_SCHEMA{} = Schema|Rest], SchemasMaster) ->
     ok = sync_2_1(SchemasMaster, Schema),
     sync_2(Rest, SchemasMaster).
 
-sync_2_1([], #sv_schema{name = Name}) ->
+sync_2_1([], #?SV_SCHEMA{name = Name}) ->
     %% Remove unnecessary a col
     _ = delete(Name),
     ok;
-sync_2_1([#sv_schema{name = Name}|_], #sv_schema{name = Name}) ->
+sync_2_1([#?SV_SCHEMA{name = Name}|_], #?SV_SCHEMA{name = Name}) ->
     ok;
-sync_2_1([#sv_schema{}|Rest], SchemaLocal) ->
+sync_2_1([#?SV_SCHEMA{}|Rest], SchemaLocal) ->
     sync_2_1(Rest, SchemaLocal).
+
+
+%% @doc Transform data
+%%
+-spec(transform() ->
+             ok).
+transform() ->
+    {atomic, ok} = mnesia:transform_table(
+                     ?TBL_NAME,
+                     fun transform_1/1, record_info(fields, ?SV_SCHEMA), ?SV_SCHEMA),
+    ok.
+
+%% @private
+-spec(transform_1(#?SV_SCHEMA{} | #?SV_SCHEMA{}) ->
+             #?SV_SCHEMA{}).
+transform_1(#?SV_SCHEMA{} = Schema) ->
+    Schema;
+transform_1(#sv_schema{name = Name,
+                       created_at = CreatedAt}) ->
+    #?SV_SCHEMA{name = Name,
+                name_string = atom_to_list(Name),
+                created_at = CreatedAt}.
