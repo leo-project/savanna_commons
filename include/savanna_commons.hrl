@@ -44,7 +44,6 @@
                           ?MOD_METRICS_HISTOGRAM).
 
 
-
 -define(HISTOGRAM_UNIFORM,       'uniform').
 -define(HISTOGRAM_EXDEC,         'exdec').
 -define(HISTOGRAM_SLIDE,         'slide').
@@ -143,6 +142,13 @@
           name           :: sv_schema(),
           created_at = 0 :: integer()
          }).
+-record(sv_schema_1, {
+          name             :: sv_schema(),
+          name_string = [] :: string(),
+          created_at = 0   :: integer()
+         }).
+-define(SV_SCHEMA, 'sv_schema_1').
+
 
 -record(sv_column, {
           id              :: any(),
@@ -163,6 +169,7 @@
           del = false     :: boolean()
          }).
 -define(SV_COLUMN, 'sv_column_1').
+
 
 -record(sv_metric_group, {
           id          :: any(),

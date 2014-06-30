@@ -28,12 +28,15 @@
 -define(SCHEMA_NAME_1, 'test_1').
 -define(SCHEMA_NAME_2, 'test_2').
 -define(SCHEMA_NAME_3, 'test_3').
--define(SCHEMA_1, #sv_schema{name = ?SCHEMA_NAME_1,
-                             created_at = leo_date:now()}).
--define(SCHEMA_2, #sv_schema{name = ?SCHEMA_NAME_2,
-                             created_at = leo_date:now()}).
--define(SCHEMA_3, #sv_schema{name = ?SCHEMA_NAME_3,
-                             created_at = leo_date:now()}).
+-define(SCHEMA_1, #?SV_SCHEMA{name = ?SCHEMA_NAME_1,
+                              name_string = atom_to_list(?SCHEMA_NAME_1),
+                              created_at = leo_date:now()}).
+-define(SCHEMA_2, #?SV_SCHEMA{name = ?SCHEMA_NAME_2,
+                              name_string = atom_to_list(?SCHEMA_NAME_2),
+                              created_at = leo_date:now()}).
+-define(SCHEMA_3, #?SV_SCHEMA{name = ?SCHEMA_NAME_3,
+                              name_string = atom_to_list(?SCHEMA_NAME_3),
+                              created_at = leo_date:now()}).
 
 suite_test_() ->
     {setup,
@@ -98,6 +101,9 @@ suite() ->
 
     ?assertEqual(?SCHEMA_1, _S1),
     ?assertEqual(?SCHEMA_2, _S2),
+
+    {ok, _S1} = svc_tbl_schema:find_by_name_string(atom_to_list(?SCHEMA_NAME_1)),
+    {ok, _S2} = svc_tbl_schema:find_by_name_string(atom_to_list(?SCHEMA_NAME_2)),
 
     ok = svc_tbl_schema:delete(?SCHEMA_NAME_1),
     not_found = svc_tbl_schema:get(?SCHEMA_NAME_1),

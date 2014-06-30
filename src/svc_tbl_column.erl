@@ -348,6 +348,7 @@ transform() ->
                      fun transform_1/1, record_info(fields, ?SV_COLUMN), ?SV_COLUMN),
     ok.
 
+%% @private
 transform_1(#?SV_COLUMN{} = Col) ->
     Col;
 transform_1(#sv_column{

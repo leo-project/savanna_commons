@@ -74,8 +74,8 @@ new_1(Error) ->
              ok | {error, any()}).
 create_schema(SchemaName, Columns) ->
     CreatedAt = leo_date:now(),
-    case svc_tbl_schema:update(#sv_schema{name = SchemaName,
-                                          created_at = CreatedAt}) of
+    case svc_tbl_schema:update(#?SV_SCHEMA{name = SchemaName,
+                                           created_at = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Columns, CreatedAt);
         {error, Cause} ->
@@ -261,7 +261,7 @@ sync_schemas(Managers) ->
 
 %% @doc Synchronize the tables
 %%
--spec(sync_tables(list(#sv_schema{}), list(#?SV_COLUMN{})) ->
+-spec(sync_tables(list(#?SV_SCHEMA{}), list(#?SV_COLUMN{})) ->
              {ok, {integer(), integer()}} | {error, any()}).
 sync_tables(Schemas, Columns) ->
     ok = svc_tbl_schema:sync(Schemas),
