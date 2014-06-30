@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.6.5 (June 30, 2014)
+
+* Refactor schema-table
+
+
 ## 0.6.4 (May 26, 2014)
 
 * Support to execute dialyzer
