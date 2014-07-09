@@ -50,7 +50,7 @@ start_link() ->
 %%
 -spec(start_child(mod_sv_metrics(), atom(), #sv_metric_conf{}) ->
              ok | {error, any()}).
-start_child('svc_metrics_counter' = Mod, ServerId, MetricConf) ->
+start_child(?MOD_METRICS_COUNTER = Mod, ServerId, MetricConf) ->
     #sv_metric_conf{window   = Window,
                     step     = Step,
                     callback = Callback} = MetricConf,
@@ -67,7 +67,24 @@ start_child('svc_metrics_counter' = Mod, ServerId, MetricConf) ->
             {error, Cause}
     end;
 
-start_child('svc_metrics_histogram' = Mod, ServerId, MetricConf) ->
+start_child(?MOD_METRICS_GAUGE = Mod, ServerId, MetricConf) ->
+    #sv_metric_conf{window   = Window,
+                    step     = Step,
+                    callback = Callback} = MetricConf,
+    ProcExpirationTime = ?env_proc_expiration_time(),
+    ChildSpec = {ServerId,
+                 {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_GAUGE,
+                                                  Window, Callback, Step, ProcExpirationTime]},
+                 temporary, 2000, worker, [svc_metric_server]},
+
+    case supervisor:start_child(?MODULE, ChildSpec) of
+        {ok,_Pid} ->
+            ok;
+        {error, Cause} ->
+            {error, Cause}
+    end;
+
+start_child(?MOD_METRICS_HISTOGRAM = Mod, ServerId, MetricConf) ->
     #sv_metric_conf{histogram_type = HistogramType,
                     window      = Window,
                     step        = Step,

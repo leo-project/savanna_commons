@@ -35,18 +35,24 @@
 -define(METRIC_COUNTER,   'counter').
 -define(METRIC_HISTOGRAM, 'histogram').
 -define(METRIC_HISTORY,   'history').
--type(sv_metric_type() :: ?METRIC_COUNTER | ?METRIC_HISTOGRAM | ?METRIC_HISTORY).
+-define(METRIC_GAUGE,     'gauge').
+-type(sv_metric_type() :: ?METRIC_COUNTER |
+                          ?METRIC_HISTOGRAM |
+                          ?METRIC_HISTORY |
+                          ?METRIC_GAUGE).
 
 
 -define(MOD_METRICS_COUNTER,   'svc_metrics_counter').
 -define(MOD_METRICS_HISTOGRAM, 'svc_metrics_histogram').
+-define(MOD_METRICS_GAUGE,     'svc_metrics_gauge').
 -type(mod_sv_metrics() :: ?MOD_METRICS_COUNTER |
-                          ?MOD_METRICS_HISTOGRAM).
+                          ?MOD_METRICS_HISTOGRAM |
+                          ?MOD_METRICS_GAUGE).
 
 
--define(HISTOGRAM_UNIFORM,       'uniform').
--define(HISTOGRAM_EXDEC,         'exdec').
--define(HISTOGRAM_SLIDE,         'slide').
+-define(HISTOGRAM_UNIFORM, 'uniform').
+-define(HISTOGRAM_EXDEC,   'exdec').
+-define(HISTOGRAM_SLIDE,   'slide').
 -type(sv_histogram_type() :: ?HISTOGRAM_UNIFORM |
                              ?HISTOGRAM_EXDEC |
                              ?HISTOGRAM_SLIDE).
@@ -60,16 +66,18 @@
 -define(TBL_COLUMNS,    'sv_columns').
 -define(TBL_METRIC_GRP, 'sv_metric_grp').
 
--define(COL_TYPE_COUNTER,         'counter').
--define(COL_TYPE_H_UNIFORM,       'histogram_uniform').
--define(COL_TYPE_H_SLIDE,         'histogram_slide').
--define(COL_TYPE_H_EXDEC,         'histogram_exdec').
--define(COL_TYPE_HISTORY,         'history').
+-define(COL_TYPE_COUNTER,   'counter').
+-define(COL_TYPE_H_UNIFORM, 'histogram_uniform').
+-define(COL_TYPE_H_SLIDE,   'histogram_slide').
+-define(COL_TYPE_H_EXDEC,   'histogram_exdec').
+-define(COL_TYPE_HISTORY,   'history').
+-define(COL_TYPE_GAUGE,     'gauge').
 -type(sv_column_type() :: ?COL_TYPE_COUNTER |
                           ?COL_TYPE_H_UNIFORM |
                           ?COL_TYPE_H_SLIDE |
                           ?COL_TYPE_H_EXDEC |
                           ?COL_TYPE_HISTORY |
+                          ?COL_TYPE_GAUGE |
                           undefined
                           ).
 
@@ -129,7 +137,7 @@
 %% Records
 -record(sv_metric_state, {id :: atom(),
                           sample_mod  :: atom(),
-                          type        :: sv_histogram_type() | ?METRIC_COUNTER,
+                          type        :: sv_histogram_type() | ?METRIC_COUNTER | ?METRIC_GAUGE,
                           notify_to   :: atom(),
                           window      :: pos_integer(),
                           step        :: pos_integer(),

@@ -59,7 +59,18 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 start_link(ServerId, SampleMod, ?METRIC_COUNTER = SampleType, Window, Callback, Step, ExpireTime) ->
-    _ = folsom_ets:add_handler(counter, ServerId),
+    _ = folsom_metrics:new_counter(ServerId),
+    gen_server:start_link({local, ServerId}, ?MODULE, [#sv_metric_state{id          = ServerId,
+                                                                        sample_mod  = SampleMod,
+                                                                        type        = SampleType,
+                                                                        notify_to   = Callback,
+                                                                        window      = Window,
+                                                                        step        = Step,
+                                                                        expire_time = ExpireTime
+                                                                       }], []);
+
+start_link(ServerId, SampleMod, ?METRIC_GAUGE = SampleType, Window, Callback, Step, ExpireTime) ->
+    _ = folsom_metrics:new_gauge(ServerId),
     gen_server:start_link({local, ServerId}, ?MODULE, [#sv_metric_state{id          = ServerId,
                                                                         sample_mod  = SampleMod,
                                                                         type        = SampleType,
@@ -190,14 +201,21 @@ handle_call(get_status, _From, #sv_metric_state{id        = Id,
     {reply, {ok, Ret}, State_1};
 
 
-%% GET values
+%% GET values - for counter
 handle_call(get_values, _From, #sv_metric_state{id = ServerId,
                                                 type = ?METRIC_COUNTER} = State) ->
     Count = folsom_metrics_counter:get_value(ServerId),
-
     State_1 = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, {ok, Count}, State_1};
 
+%% GET values - for gauge
+handle_call(get_values, _From, #sv_metric_state{id = ServerId,
+                                                type = ?METRIC_GAUGE} = State) ->
+    Gauge = folsom_metrics_gauge:get_value(ServerId),
+    State_1 = State#sv_metric_state{updated_at = leo_date:now()},
+    {reply, {ok, Gauge}, State_1};
+
+%% GET values - for histogram
 handle_call(get_values, _From, #sv_metric_state{id = ServerId,
                                                 sample_mod = Mod} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
@@ -215,7 +233,8 @@ handle_call(get_histogram_statistics, _From, #sv_metric_state{id = ServerId,
     State_1 = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, {ok, Ret}, State_1};
 
-%% Update a value
+
+%% Update a value - for counter
 handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      type = ?METRIC_COUNTER} = State) ->
     folsom_metrics:notify({ServerId, {inc, Value}}),
@@ -223,6 +242,14 @@ handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
     State_1 = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, ok, State_1};
 
+%% Update a value - for gauge
+handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
+                                                     type = ?METRIC_GAUGE} = State) ->
+    folsom_metrics:notify({ServerId, Value}),
+    State_1 = State#sv_metric_state{updated_at = leo_date:now()},
+    {reply, ok, State_1};
+
+%% Update a value - for histogram
 handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      sample_mod = Mod} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),

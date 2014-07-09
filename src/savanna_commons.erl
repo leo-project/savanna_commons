@@ -48,14 +48,21 @@ new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
                     metric_group_name = MetricGroup,
                     name = Key} = MetricConf) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_counter', ServerId, MetricConf),
+    Ret = savanna_commons_sup:start_child(?MOD_METRICS_COUNTER, ServerId, MetricConf),
+    new_1(Ret);
+
+new(#sv_metric_conf{metric_type = ?METRIC_GAUGE,
+                    metric_group_name = MetricGroup,
+                    name = Key} = MetricConf) ->
+    ServerId = ?sv_metric_name(MetricGroup, Key),
+    Ret = savanna_commons_sup:start_child(?MOD_METRICS_GAUGE, ServerId, MetricConf),
     new_1(Ret);
 
 new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                     metric_group_name = MetricGroup,
                     name = Key} = MetricConf) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),
-    Ret = savanna_commons_sup:start_child('svc_metrics_histogram', ServerId, MetricConf),
+    Ret = savanna_commons_sup:start_child(?MOD_METRICS_HISTOGRAM, ServerId, MetricConf),
     new_1(Ret).
 
 
@@ -147,6 +154,15 @@ create_metrics_by_schema_1(_,[],_,_,_) ->
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_COUNTER,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
     ok = new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
+                             metric_group_name = MetricGroupName,
+                             name = Key,
+                             window = Window,
+                             callback = CallbackMod}),
+    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+
+create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_GAUGE,
+                                                         name = Key}|Rest], Window, Step, CallbackMod) ->
+    ok = new(#sv_metric_conf{metric_type = ?METRIC_GAUGE,
                              metric_group_name = MetricGroupName,
                              name = Key,
                              window = Window,
@@ -285,7 +301,9 @@ checksum() ->
 -spec(check_type(atom()) ->
              {ok, atom()} | {error, any()}).
 check_type(ServerId) ->
-    case check_type([?METRIC_COUNTER, ?METRIC_HISTOGRAM], ServerId) of
+    case check_type([?METRIC_COUNTER,
+                     ?METRIC_GAUGE,
+                     ?METRIC_HISTOGRAM], ServerId) of
         not_found ->
             check_type_1(ServerId, undefined);
         Type ->
@@ -301,6 +319,13 @@ check_type([],_ServerId) ->
     not_found;
 check_type([?METRIC_COUNTER = Type|Rest], ServerId) ->
     case ets:lookup(?COUNTER_TABLE, {ServerId, 0}) of
+        [{{ServerId, 0},0}|_] ->
+            Type;
+        _ ->
+            check_type(Rest, ServerId)
+    end;
+check_type([?METRIC_GAUGE = Type|Rest], ServerId) ->
+    case ets:lookup(?GAUGE_TABLE, {ServerId, 0}) of
         [{{ServerId, 0},0}|_] ->
             Type;
         _ ->
