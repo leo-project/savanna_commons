@@ -268,7 +268,7 @@ counter_metrics_2() ->
     inspect_1(Schema, Key, StartTime, EndTime),
     ok.
 
-inspect_1(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->    
+inspect_1(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
     ok;
 inspect_1(Schema, Key, _, EndTime) ->
     savanna_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(),127)}),
@@ -295,7 +295,7 @@ gauge_metrics() ->
     inspect_gauge(Schema, Key, StartTime, EndTime),
     ok.
 
-inspect_gauge(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->    
+inspect_gauge(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
     ok;
 inspect_gauge(Schema, Key, _, EndTime) ->
     timer:sleep(timer:seconds(10)),
