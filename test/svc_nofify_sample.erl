@@ -24,9 +24,21 @@
 
 -behaviour(svc_notify_behaviour).
 
+-include("savanna_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/1]).
 
+notify(#sv_result{schema_name = 'test_gauge',
+                  metric_group_name = Group,
+                  from = From,
+                  to   = To,
+                  window = Window,
+                  col_name = Col,
+                  result = Ret}) ->
+    ?debugVal({Group, Col}),
+    ?debugVal({From, To, Window}),
+    ?debugVal(Ret),
+    ok;
 notify(_Result) ->
-    ?debugVal(_Result),
     ok.
+

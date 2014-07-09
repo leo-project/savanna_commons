@@ -378,7 +378,6 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
             Delay = erlang:phash(Now, 500),
             spawn(fun() ->
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
-
                           ToDateTime   = TrimedAt + Window,
                           AdjustedStep = adjust_step(ToDateTime, Window, Step),
 

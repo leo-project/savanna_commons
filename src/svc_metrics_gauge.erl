@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %%======================================================================
--module(svc_metric_gauge).
+-module(svc_metrics_gauge).
 -author('Yosuke Hara').
 
 -behaviour(svc_operate_behaviour).
@@ -69,8 +69,8 @@ trim_and_notify(#sv_metric_state{id = ServerId,
                                                    metric_group_name = MetricGroup,
                                                    col_name = Key,
                                                    result = Gauge}),
-            folsom_metrics_counter:clear(ServerId),
+            folsom_metrics_gauge:clear(ServerId),
             ok;
-        _ ->
+        _Error ->
             {error, ?ERROR_COULD_NOT_GET_SCHEMA}
     end.
