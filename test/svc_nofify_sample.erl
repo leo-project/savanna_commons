@@ -28,16 +28,15 @@
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/1]).
 
-notify(#sv_result{schema_name = 'test_gauge',
+notify(#sv_result{schema_name = Schema,
                   metric_group_name = Group,
                   from = From,
                   to   = To,
                   window = Window,
                   col_name = Col,
                   result = Ret}) ->
-    ?debugVal({Group, Col}),
-    ?debugVal({From, To, Window}),
-    ?debugVal(Ret),
+    ?debugFmt("~p/~p/~p - ~p..~p [~p]~n~p~n",
+              [Schema, Group, Col, From, To, Window, Ret]),
     ok;
 notify(_Result) ->
     ok.
