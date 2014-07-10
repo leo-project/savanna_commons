@@ -27,20 +27,20 @@
 
 
 %% @doc Retrieve a metric
--callback(handle_get_values(Hist::#histogram{}) ->
+-callback(handle_to_get_values(Hist::#histogram{}) ->
                  any() | {error, any()}).
 
 
 %% @doc Retrieve a calculated statistics
--callback(handle_get_histogram_statistics(Hist::#histogram{}) ->
+-callback(handle_to_get_hist_stats(Hist::#histogram{}) ->
                  any() | {error, any()}).
 
 
 %% @doc Input a value into the sample
--callback(handle_update(?HISTOGRAM_SLIDE   |
-                        ?HISTOGRAM_UNIFORM |
-                        ?HISTOGRAM_EXDEC, #slide{}|#uniform{}|#exdec{}, any()) ->
-             #slide{} | #uniform{} | #exdec{} | integer()).
+-callback(handle_to_update(?HISTOGRAM_SLIDE   |
+                           ?HISTOGRAM_UNIFORM |
+                           ?HISTOGRAM_EXDEC, #slide{}|#uniform{}|#exdec{}, any()) ->
+                 #slide{} | #uniform{} | #exdec{} | integer()).
 
 
 %% @doc Input a value into the sample

@@ -209,5 +209,6 @@
           window            :: pos_integer(),
           adjusted_step     :: pos_integer(),
           col_name          :: sv_key(),
+          samples = []      :: [tuple()],
           result            :: any()
          }).

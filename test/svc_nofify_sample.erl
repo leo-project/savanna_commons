@@ -28,6 +28,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -export([notify/1]).
 
+notify(#sv_result{result = []}) ->
+    ok;
 notify(#sv_result{schema_name = Schema,
                   metric_group_name = Group,
                   from = From,

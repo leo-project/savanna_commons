@@ -219,7 +219,7 @@ handle_call(get_values, _From, #sv_metric_state{id = ServerId,
 handle_call(get_values, _From, #sv_metric_state{id = ServerId,
                                                 sample_mod = Mod} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
-    Ret = Mod:handle_get_values(Hist),
+    Ret = Mod:handle_to_get_values(Hist),
 
     State_1 = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, {ok, Ret}, State_1};
@@ -228,7 +228,7 @@ handle_call(get_values, _From, #sv_metric_state{id = ServerId,
 handle_call(get_histogram_statistics, _From, #sv_metric_state{id = ServerId,
                                                               sample_mod = Mod} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
-    Ret = Mod:handle_get_histogram_statistics(Hist),
+    Ret = Mod:handle_to_get_hist_stats(Hist),
 
     State_1 = State#sv_metric_state{updated_at = leo_date:now()},
     {reply, {ok, Ret}, State_1};
@@ -254,7 +254,7 @@ handle_call({update, Value}, _From, #sv_metric_state{id = ServerId,
                                                      sample_mod = Mod} = State) ->
     [{_, Hist}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
     Sample = Hist#histogram.sample,
-    case Mod:handle_update(Hist#histogram.type, Hist#histogram.sample, Value) of
+    case Mod:handle_to_update(Hist#histogram.type, Hist#histogram.sample, Value) of
         Sample ->
             void;
         NewSample ->
