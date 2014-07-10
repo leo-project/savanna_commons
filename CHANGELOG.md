@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.8.0 (July 10, 2014)
+
+* Support gauge
+
+
 ## 0.6.5 (June 30, 2014)
 
 * Refactor schema-table
