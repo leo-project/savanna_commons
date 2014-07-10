@@ -28,9 +28,9 @@
 -include_lib("folsom/include/folsom.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([handle_get_values/1,
-         handle_get_histogram_statistics/1,
-         handle_update/3,
+-export([handle_to_get_values/1,
+         handle_to_get_hist_stats/1,
+         handle_to_update/3,
          trim_and_notify/2]).
 
 
@@ -38,25 +38,25 @@
 %% API
 %%--------------------------------------------------------------------
 %% @doc Retrive values
-handle_get_values(Hist) ->
+handle_to_get_values(Hist) ->
     get_values_1(Hist#histogram.type, Hist#histogram.sample).
 
 
 %% @doc Retrive histogram-stats
-handle_get_histogram_statistics(Hist) ->
+handle_to_get_hist_stats(Hist) ->
     get_current_statistics(Hist).
 
 
 %% @doc Insert the value
--spec(handle_update(?HISTOGRAM_SLIDE   |
-                    ?HISTOGRAM_UNIFORM |
-                    ?HISTOGRAM_EXDEC, #uniform{}, any()) ->
+-spec(handle_to_update(?HISTOGRAM_SLIDE   |
+                       ?HISTOGRAM_UNIFORM |
+                       ?HISTOGRAM_EXDEC, #uniform{}, any()) ->
              #slide{} | #uniform{} | #exdec{}).
-handle_update(?HISTOGRAM_SLIDE, Sample, Value) ->
+handle_to_update(?HISTOGRAM_SLIDE, Sample, Value) ->
     folsom_sample_slide:update(Sample, Value);
-handle_update(?HISTOGRAM_UNIFORM, Sample, Value) ->
+handle_to_update(?HISTOGRAM_UNIFORM, Sample, Value) ->
     folsom_sample_uniform:update(Sample, Value);
-handle_update(?HISTOGRAM_EXDEC, Sample, Value) ->
+handle_to_update(?HISTOGRAM_EXDEC, Sample, Value) ->
     folsom_sample_exdec:update(Sample, Value).
 
 
@@ -68,8 +68,9 @@ trim_and_notify(#sv_metric_state{id = ServerId,
                                  notify_to = Callback}, #sv_result{} = Result)->
     %% Retrieve the current value, then execute the callback-function
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
-    Hist = get_value(ServerId),
-    CurrentStat = get_current_statistics(Hist),
+    #histogram{type   = HistType,
+               sample = HistSample} = get_value(ServerId),
+    Samples = get_values_1(HistType, HistSample),
 
     %% Notify a calculated statistics,
     %% then clear oldest data
@@ -78,7 +79,7 @@ trim_and_notify(#sv_metric_state{id = ServerId,
             catch Callback:notify(Result#sv_result{schema_name = SchemaName,
                                                    metric_group_name = MetricGroup,
                                                    col_name = Key,
-                                                   result = CurrentStat}),
+                                                   result = Samples}),
             try
                 ok = trim_1(SampleType, ServerId)
             catch

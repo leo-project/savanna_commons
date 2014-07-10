@@ -28,9 +28,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([handle_get_values/1,
-         handle_get_histogram_statistics/1,
-         handle_update/3,
+-export([handle_to_get_values/1,
+         handle_to_get_hist_stats/1,
+         handle_to_update/3,
          trim_and_notify/2]).
 
 
@@ -38,17 +38,17 @@
 %% API
 %%--------------------------------------------------------------------
 %% @doc Retrieve a metric
-handle_get_values(_)->
+handle_to_get_values(_)->
     [].
 
 
 %% @doc Retrieve a calculated statistics
-handle_get_histogram_statistics(_) ->
+handle_to_get_hist_stats(_) ->
     [].
 
 
 %% @doc Input a value into the sample
-handle_update(_,_,_) ->
+handle_to_update(_,_,_) ->
     0.
 
 
