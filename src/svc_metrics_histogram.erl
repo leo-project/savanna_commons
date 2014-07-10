@@ -71,6 +71,7 @@ trim_and_notify(#sv_metric_state{id = ServerId,
     #histogram{type   = HistType,
                sample = HistSample} = get_value(ServerId),
     Samples = get_values_1(HistType, HistSample),
+    Stats   = bear:get_statistics(Samples),
 
     %% Notify a calculated statistics,
     %% then clear oldest data
@@ -79,7 +80,8 @@ trim_and_notify(#sv_metric_state{id = ServerId,
             catch Callback:notify(Result#sv_result{schema_name = SchemaName,
                                                    metric_group_name = MetricGroup,
                                                    col_name = Key,
-                                                   result = Samples}),
+                                                   samples = Samples,
+                                                   result = Stats}),
             try
                 ok = trim_1(SampleType, ServerId)
             catch
@@ -131,7 +133,6 @@ get_value(ServerId) ->
     [{_, Value}] = ets:lookup(?HISTOGRAM_TABLE, ServerId),
     Value.
 
-
 %% @doc Retrieve values
 %% @private
 get_values_1(?HISTOGRAM_SLIDE, Sample) ->
@@ -145,5 +146,5 @@ get_values_1(?HISTOGRAM_EXDEC, Sample) ->
 %% @doc Retrieve the current statistics
 %% @private
 get_current_statistics(Hist) ->
-    Values = get_values_1(Hist#histogram.type, Hist#histogram.sample),
-    bear:get_statistics(Values).
+    Samples = get_values_1(Hist#histogram.type, Hist#histogram.sample),
+    bear:get_statistics(Samples).

@@ -36,17 +36,6 @@ notify(#sv_result{schema_name = Schema,
                   to   = To,
                   window = Window,
                   col_name = Col,
-                  result = [H|_] = Ret}) when is_number(H) ->
-    Stats = bear:get_statistics(Ret),
-    ?debugFmt("~p/~p/~p - ~p..~p [~p]~n~p~n",
-              [Schema, Group, Col, From, To, Window, Stats]),
-    ok;
-notify(#sv_result{schema_name = Schema,
-                  metric_group_name = Group,
-                  from = From,
-                  to   = To,
-                  window = Window,
-                  col_name = Col,
                   result = Ret}) ->
     ?debugFmt("~p/~p/~p - ~p..~p [~p]~n~p~n",
               [Schema, Group, Col, From, To, Window, Ret]),
