@@ -51,11 +51,13 @@ suite_test_() ->
        {timeout, 120, fun create_metrics_by_shcema/0}},
       {"test counter metrics for 60sec",
        {timeout, 120, fun counter_metrics_2/0}},
-      {"test counter metrics for 60sec#1",
+      {"test counter metrics for 60sec",
+       {timeout, 120, fun gauge_metrics/0}},
+      {"test gauge metrics for 60sec",
        {timeout, 120, fun histogram_2/0}},
-      {"test counter metrics for 60sec#2",
+      {"test counter metrics for 60sec",
        {timeout, 180, fun histogram_3/0}},
-      {"test counter metrics for 60sec#3",
+      {"test counter metrics for 60sec",
        {timeout, 180, fun histogram_4/0}}
      ]}.
 
@@ -155,13 +157,16 @@ create_schema() ->
                         #?SV_COLUMN{name = 'col_4',
                                     type = ?COL_TYPE_H_EXDEC,
                                     constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000},
-                                                  {?HISTOGRAM_CONS_ALPHA,  0.018}]}
+                                                  {?HISTOGRAM_CONS_ALPHA,  0.018}]},
+                        #?SV_COLUMN{name = 'col_5',
+                                    type = ?COL_TYPE_GAUGE,
+                                    constraint = []}
                        ]),
 
     {ok, Columns_1} = svc_tbl_column:all(),
     {ok, Columns_2} = svc_tbl_column:find_by_schema_name(SchemaName),
-    ?assertEqual(5, length(Columns_1)),
-    ?assertEqual(4, length(Columns_2)),
+    ?assertEqual(6, length(Columns_1)),
+    ?assertEqual(5, length(Columns_2)),
     ok.
 
 create_metrics_by_shcema() ->
@@ -222,17 +227,23 @@ create_metrics_by_shcema() ->
     savanna_commons:notify(Schema, {Key_4, Event_8}),
     savanna_commons:notify(Schema, {Key_4, Event_9}),
 
+    Key_5 = 'col_5',
+    GaugeValue = 123456789,
+    savanna_commons:notify(Schema, {Key_5, GaugeValue}),
+
     timer:sleep(1000),
     {ok, Ret_1} = savanna_commons:get_metric_value(Schema, Key_1),
     {ok, Ret_2} = savanna_commons:get_histogram_statistics(Schema, Key_2),
     {ok, Ret_3} = savanna_commons:get_histogram_statistics(Schema, Key_3),
     {ok, Ret_4} = savanna_commons:get_histogram_statistics(Schema, Key_4),
+    {ok, Ret_5} = savanna_commons:get_metric_value(Schema, Key_5),
 
     ?assertEqual(1280, Ret_1),
     ?assertEqual(true, [] /= Ret_2),
     ?assertEqual(true, [] /= Ret_3),
     ?assertEqual(true, [] /= Ret_3),
     ?assertEqual(true, [] /= Ret_4),
+    ?assertEqual(GaugeValue, Ret_5),
 
     timer:sleep(timer:seconds(Window + 3)),
     ok.
@@ -249,7 +260,8 @@ counter_metrics_2() ->
                                 type = ?COL_TYPE_COUNTER,
                                 constraint = []}
                    ]),
-    ok = savanna_commons:create_metrics_by_schema(Schema, MetricGroup, Window, 'svc_nofify_sample'),
+    ok = savanna_commons:create_metrics_by_schema(
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
 
     StartTime = leo_date:now(),
     EndTime   = StartTime + 65,
@@ -261,6 +273,34 @@ inspect_1(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
 inspect_1(Schema, Key, _, EndTime) ->
     savanna_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(),127)}),
     inspect_1(Schema, Key, leo_date:now(), EndTime).
+
+
+%% TEST metric gauge
+gauge_metrics() ->
+    Schema = 'test_gauge',
+    MetricGroup = Schema,
+    Key = 'g1',
+    Window = 60,
+
+    ok = savanna_commons:create_schema(
+           Schema, [#?SV_COLUMN{name = Key,
+                                type = ?COL_TYPE_GAUGE,
+                                constraint = []}
+                   ]),
+    ok = savanna_commons:create_metrics_by_schema(
+           Schema, MetricGroup, Window, 'svc_nofify_sample'),
+
+    StartTime = leo_date:now(),
+    EndTime   = StartTime + 30,
+    inspect_gauge(Schema, Key, StartTime, EndTime),
+    ok.
+
+inspect_gauge(_,_, CurrentTime, EndTime) when CurrentTime >= EndTime ->
+    ok;
+inspect_gauge(Schema, Key, _, EndTime) ->
+    timer:sleep(timer:seconds(10)),
+    savanna_commons:notify(Schema, {Key, erlang:phash2(leo_date:clock(),127)}),
+    inspect_gauge(Schema, Key, leo_date:now(), EndTime).
 
 
 %% TEST metric histogram - (slide)

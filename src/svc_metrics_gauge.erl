@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %%======================================================================
--module(svc_metrics_counter).
+-module(svc_metrics_gauge).
 -author('Yosuke Hara').
 
 -behaviour(svc_operate_behaviour).
@@ -58,7 +58,7 @@ handle_update(_,_,_) ->
 trim_and_notify(#sv_metric_state{id = ServerId,
                                  notify_to = Callback}, #sv_result{} = Result) ->
     %% Retrieve the current value, then execute the callback-function
-    Count = folsom_metrics_counter:get_value(ServerId),
+    Gauge = folsom_metrics_gauge:get_value(ServerId),
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),
 
     %% Notify a calculated metric,
@@ -68,9 +68,9 @@ trim_and_notify(#sv_metric_state{id = ServerId,
             catch Callback:notify(Result#sv_result{schema_name = SchemaName,
                                                    metric_group_name = MetricGroup,
                                                    col_name = Key,
-                                                   result = Count}),
-            folsom_metrics_counter:clear(ServerId),
+                                                   result = Gauge}),
+            folsom_metrics_gauge:clear(ServerId),
             ok;
-        _ ->
+        _Error ->
             {error, ?ERROR_COULD_NOT_GET_SCHEMA}
     end.

@@ -205,7 +205,13 @@ suite() ->
                         constraint = [],
                         updated_at = Now,
                         created_at = Now},
-
+    Col_4 = #?SV_COLUMN{id = {SchemaName, 'col_4'},
+                        schema_name = SchemaName,
+                        name = 'col_4',
+                        type = ?COL_TYPE_GAUGE,
+                        constraint = [{min, 0}, {max, 16384}],
+                        updated_at = Now,
+                        created_at = Now},
 
     {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
     not_found = svc_tbl_column:all(),
@@ -215,19 +221,22 @@ suite() ->
     ok = svc_tbl_column:insert(Col_1),
     ok = svc_tbl_column:insert(Col_2),
     ok = svc_tbl_column:insert(Col_3),
+    ok = svc_tbl_column:insert(Col_4),
 
     {ok, Ret_1} = svc_tbl_column:get(Col_1#?SV_COLUMN.schema_name, Col_1#?SV_COLUMN.name),
     {ok, Ret_2} = svc_tbl_column:get(Col_2#?SV_COLUMN.schema_name, Col_2#?SV_COLUMN.name),
     {ok, Ret_3} = svc_tbl_column:get(Col_3#?SV_COLUMN.schema_name, Col_3#?SV_COLUMN.name),
+    {ok, Ret_4} = svc_tbl_column:get(Col_4#?SV_COLUMN.schema_name, Col_4#?SV_COLUMN.name),
 
-    not_found = svc_tbl_column:get(SchemaName,'col_4'),
+    not_found = svc_tbl_column:get(SchemaName,'col_5'),
     Checksum_1 = svc_tbl_column:checksum(SchemaName),
     Size_1 = svc_tbl_column:size(),
 
     ?assertEqual(Col_1, Ret_1),
     ?assertEqual(Col_2, Ret_2),
     ?assertEqual(Col_3, Ret_3),
-    ?assertEqual(3, Size_1),
+    ?assertEqual(Col_4, Ret_4),
+    ?assertEqual(4, Size_1),
 
     ok = svc_tbl_column:delete(Col_1#?SV_COLUMN.schema_name, Col_1#?SV_COLUMN.name),
     not_found = svc_tbl_column:get(Col_1#?SV_COLUMN.schema_name, Col_1#?SV_COLUMN.name),
@@ -236,7 +245,7 @@ suite() ->
     ?assertEqual(true, Checksum_1 /= Checksum_2),
 
     Size_2 = svc_tbl_column:size(),
-    ?assertEqual(3, Size_2),
+    ?assertEqual(4, Size_2),
 
     mnesia:stop(),
     ok.
