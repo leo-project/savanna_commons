@@ -77,11 +77,12 @@ trim_and_notify(#sv_metric_state{id = ServerId,
     %% then clear oldest data
     case svc_tbl_metric_group:get(MetricGroup) of
         {ok, #sv_metric_group{schema_name = SchemaName}} ->
-            catch Callback:notify(Result#sv_result{schema_name = SchemaName,
+            catch Callback:notify(Result#sv_result{metric_type = ?METRIC_HISTOGRAM,
+                                                   schema_name = SchemaName,
                                                    metric_group_name = MetricGroup,
                                                    col_name = Key,
-                                                   samples = Samples,
-                                                   result = Stats}),
+                                                   result = {Samples,Stats}
+                                                  }),
             try
                 ok = trim_1(SampleType, ServerId)
             catch
