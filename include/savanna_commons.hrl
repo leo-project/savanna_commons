@@ -28,6 +28,13 @@
 -type(sv_values() :: list(tuple())).
 -type(sv_metric_grp() :: atom()).
 
+-type(sv_result_counter()   :: integer()).
+-type(sv_result_gauge()     :: float()|integer()).
+-type(sv_result_histogram() :: {[sv_result_gauge()], [tuple()]}).
+-type(sv_result() :: sv_result_counter()|
+                     sv_result_gauge()|
+                     sv_result_histogram()).
+
 -define(ERROR_ETS_NOT_AVAILABLE,    "ETS is not available").
 -define(ERROR_MNESIA_NOT_START,     "Mnesia is not available").
 -define(ERROR_COULD_NOT_GET_SCHEMA, "Could not get a schema").
@@ -202,13 +209,13 @@
           }).
 
 -record(sv_result, {
-          schema_name :: sv_schema(),
+          metric_type       :: sv_metric_type(),
+          schema_name       :: sv_schema(),
           metric_group_name :: sv_metric_grp(),
-          from              :: pos_integer(),
-          to                :: pos_integer(),
-          window            :: pos_integer(),
-          adjusted_step     :: pos_integer(),
+          from              :: integer(),
+          to                :: integer(),
+          window            :: integer(),
+          adjusted_step     :: integer(),
           col_name          :: sv_key(),
-          samples = []      :: [tuple()],
-          result            :: any()
+          result            :: sv_result()
          }).

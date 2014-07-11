@@ -30,16 +30,27 @@
 
 notify(#sv_result{result = []}) ->
     ok;
-notify(#sv_result{schema_name = Schema,
+notify(#sv_result{metric_type = ?METRIC_HISTOGRAM,
+                  schema_name = Schema,
                   metric_group_name = Group,
                   from = From,
                   to   = To,
                   window = Window,
                   col_name = Col,
-                  result = Ret}) ->
+                  result = {_Samples, Stats}}) ->
     ?debugFmt("~p/~p/~p - ~p..~p [~p]~n~p~n",
-              [Schema, Group, Col, From, To, Window, Ret]),
+              [Schema, Group, Col, From, To, Window, Stats]),
+    ok;
+notify(#sv_result{metric_type =_MetricType,
+                  schema_name = Schema,
+                  metric_group_name = Group,
+                  from = From,
+                  to   = To,
+                  window = Window,
+                  col_name = Col,
+                  result = Value}) ->
+    ?debugFmt("~p/~p/~p - ~p..~p [~p]~n~p~n",
+              [Schema, Group, Col, From, To, Window, Value]),
     ok;
 notify(_Result) ->
     ok.
-
