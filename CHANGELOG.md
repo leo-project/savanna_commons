@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.8.4 (Aug 4, 2014)
+
+* Bump leo_rpc
+
 ## 0.8.0 (July 10, 2014)
 
 * Support gauge
