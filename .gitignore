@@ -8,3 +8,4 @@ ebin/
 .savanna_commons_dialyzer_plt
 savanna_commons.dot
 savanna_commons.png
+.rebar
