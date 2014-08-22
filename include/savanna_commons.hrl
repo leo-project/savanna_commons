@@ -21,12 +21,12 @@
 %%======================================================================
 -author('Yosuke Hara').
 
--type(sv_metric() :: atom()).
--type(sv_schema() :: atom()).
--type(sv_key()    :: atom()).
--type(sv_keyval() :: {atom(), any()}).
--type(sv_values() :: list(tuple())).
--type(sv_metric_grp() :: atom()).
+-type(sv_metric() :: binary()).
+-type(sv_schema() :: binary()).
+-type(sv_key()    :: binary()).
+-type(sv_keyval() :: {binary(), any()}).
+-type(sv_values() :: [tuple()]).
+-type(sv_metric_grp() :: binary()).
 
 -type(sv_result_counter()   :: integer()).
 -type(sv_result_gauge()     :: float()|integer()).
@@ -117,7 +117,7 @@
 %% @doc Generate a metric-name from a schema-name and a key
 -define(sv_metric_name(_MetricGroup, _Key),
         list_to_atom(lists:append([?SV_PREFIX_NAME,
-                                   atom_to_list(_MetricGroup), ".", atom_to_list(_Key)]))).
+                                   binary_to_list(_MetricGroup), ".", binary_to_list(_Key)]))).
 
 %% @doc Retrieve a schema-name and a key from a metric-name
 -define(sv_schema_and_key(_Name),
@@ -126,8 +126,8 @@
             _PrefixLen = length(?SV_PREFIX_NAME),
             _Index  = string:chr(_Name_1, $.),
 
-            _MetricGrp = list_to_atom(string:sub_string(_Name_1, 1 + _PrefixLen, _Index - 1)),
-            _Column    = list_to_atom(string:sub_string(_Name_1, _Index + 1)),
+            _MetricGrp = list_to_binary(string:sub_string(_Name_1, 1 + _PrefixLen, _Index - 1)),
+            _Column    = list_to_binary(string:sub_string(_Name_1, _Index + 1)),
             {_MetricGrp,_Column}
         end).
 

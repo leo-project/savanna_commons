@@ -52,12 +52,12 @@ create_table(Mode, Nodes) ->
        {attributes, record_info(fields, sv_metric_group)},
        {user_properties,
         [
-         {id,           tuple,       primary},
-         {schema_name,  atom,        false  },
-         {name,         atom,        false  },
-         {window,       pos_integer, false  },
-         {callback,     atom,        false  },
-         {created_at,   pos_integer, false  }
+         {id,           tuple,    primary},
+         {schema_name,  binary,   false  },
+         {name,         binary,   false  },
+         {window,       integer,  false  },
+         {callback,     atom,     false  },
+         {created_at,   integer,  false  }
         ]}
       ]).
 

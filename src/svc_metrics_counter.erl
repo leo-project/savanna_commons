@@ -57,6 +57,7 @@ handle_to_update(_,_,_) ->
              ok | {error, any()}).
 trim_and_notify(#sv_metric_state{id = ServerId,
                                  notify_to = Callback}, #sv_result{} = Result) ->
+    ?debugVal(ServerId),
     %% Retrieve the current value, then execute the callback-function
     Count = folsom_metrics_counter:get_value(ServerId),
     {MetricGroup, Key} = ?sv_schema_and_key(ServerId),

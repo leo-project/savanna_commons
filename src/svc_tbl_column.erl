@@ -54,14 +54,14 @@ create_table(Mode, Nodes) ->
        {record_name, ?SV_COLUMN},
        {attributes, record_info(fields, ?SV_COLUMN)},
        {user_properties,
-        [{id,           tuple,       primary},
-         {schema_name,  atom,        false  },
-         {name,         atom,        false  },
-         {type,         atom,        false  },
-         {constraint,   list,        false  },
-         {updated_at,   pos_integer, false  },
-         {created_at,   pos_integer, false  },
-         {del,          boolean,     false  }
+        [{id,           tuple,   primary},
+         {schema_name,  binary,  false  },
+         {name,         binary,  false  },
+         {type,         atom,    false  },
+         {constraint,   list,    false  },
+         {updated_at,   integer, false  },
+         {created_at,   integer, false  },
+         {del,          boolean, false  }
         ]}
       ]).
 
