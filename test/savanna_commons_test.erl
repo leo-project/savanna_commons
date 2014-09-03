@@ -62,9 +62,9 @@ suite_test_() ->
      ]}.
 
 counter_metrics_1() ->
-    Schema = 'test',
-    MetricGroup = 'test_grp_1',
-    Key = 'c1',
+    Schema = << "test" >>,
+    MetricGroup = << "test_grp_1" >>,
+    Key = << "c1" >>,
     Window = 10,
 
     ok = savanna_commons:create_schema(
@@ -102,9 +102,9 @@ counter_metrics_1() ->
     ok.
 
 histogram_1() ->
-    Schema = 'test',
-    MetricGroup = 'test_grp_2',
-    Key = 'h1',
+    Schema = << "test" >>,
+    MetricGroup = << "test_grp_2" >>,
+    Key = << "h1" >>,
     Window = 10,
 
     ok = savanna_commons:create_schema(
@@ -143,22 +143,22 @@ histogram_1() ->
     ok.
 
 create_schema() ->
-    SchemaName = 'test_1',
+    SchemaName = << "test_1" >>,
     ok = savanna_commons:create_schema(
-           SchemaName, [#?SV_COLUMN{name = 'col_1',
+           SchemaName, [#?SV_COLUMN{name = << "col_1" >>,
                                     type = ?COL_TYPE_COUNTER,
                                     constraint = []},
-                        #?SV_COLUMN{name = 'col_2',
+                        #?SV_COLUMN{name = << "col_2" >>,
                                     type = ?COL_TYPE_H_UNIFORM,
                                     constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000}]},
-                        #?SV_COLUMN{name = 'col_3',
+                        #?SV_COLUMN{name = << "col_3" >>,
                                     type = ?COL_TYPE_H_SLIDE,
                                     constraint = []},
-                        #?SV_COLUMN{name = 'col_4',
+                        #?SV_COLUMN{name = << "col_4" >>,
                                     type = ?COL_TYPE_H_EXDEC,
                                     constraint = [{?HISTOGRAM_CONS_SAMPLE, 3000},
                                                   {?HISTOGRAM_CONS_ALPHA,  0.018}]},
-                        #?SV_COLUMN{name = 'col_5',
+                        #?SV_COLUMN{name = << "col_5" >>,
                                     type = ?COL_TYPE_GAUGE,
                                     constraint = []}
                        ]),
@@ -170,19 +170,19 @@ create_schema() ->
     ok.
 
 create_metrics_by_shcema() ->
-    Schema = 'test_1',
+    Schema = << "test_1" >>,
     MetricGroup = Schema,
     Window = 10,
 
     ok = savanna_commons:create_metrics_by_schema(
            Schema, MetricGroup, Window, 'svc_nofify_sample'),
-    Key_1 = 'col_1',
+    Key_1 = << "col_1" >>,
     savanna_commons:notify(Schema, {Key_1, 128}),
     savanna_commons:notify(Schema, {Key_1, 256}),
     savanna_commons:notify(Schema, {Key_1, 384}),
     savanna_commons:notify(Schema, {Key_1, 512}),
 
-    Key_2 = 'col_2',
+    Key_2 = << "col_2" >>,
     savanna_commons:notify(Schema, {Key_2,  16}),
     savanna_commons:notify(Schema, {Key_2,  32}),
     savanna_commons:notify(Schema, {Key_2,  64}),
@@ -192,7 +192,7 @@ create_metrics_by_shcema() ->
     savanna_commons:notify(Schema, {Key_2, 512}),
     savanna_commons:notify(Schema, {Key_2, 1024}),
 
-    Key_3 = 'col_3',
+    Key_3 = << "col_3" >>,
     Event_0 = erlang:phash2(leo_date:clock()),
     Event_1 = erlang:phash2(leo_date:clock()),
     Event_2 = erlang:phash2(leo_date:clock()),
@@ -215,7 +215,7 @@ create_metrics_by_shcema() ->
     savanna_commons:notify(Schema, {Key_3, Event_8}),
     savanna_commons:notify(Schema, {Key_3, Event_9}),
 
-    Key_4 = 'col_4',
+    Key_4 = << "col_4" >>,
     savanna_commons:notify(Schema, {Key_4, Event_0}),
     savanna_commons:notify(Schema, {Key_4, Event_1}),
     savanna_commons:notify(Schema, {Key_4, Event_2}),
@@ -227,7 +227,7 @@ create_metrics_by_shcema() ->
     savanna_commons:notify(Schema, {Key_4, Event_8}),
     savanna_commons:notify(Schema, {Key_4, Event_9}),
 
-    Key_5 = 'col_5',
+    Key_5 = << "col_5" >>,
     GaugeValue = 123456789,
     savanna_commons:notify(Schema, {Key_5, GaugeValue}),
 
@@ -250,9 +250,9 @@ create_metrics_by_shcema() ->
 
 %% TEST metric counter
 counter_metrics_2() ->
-    Schema = 'test_counter',
+    Schema = << "test_counter" >>,
     MetricGroup = Schema,
-    Key = 'col_1',
+    Key = << "col_1" >>,
     Window = 10,
 
     ok = savanna_commons:create_schema(
@@ -277,9 +277,9 @@ inspect_1(Schema, Key, _, EndTime) ->
 
 %% TEST metric gauge
 gauge_metrics() ->
-    Schema = 'test_gauge',
+    Schema = << "test_gauge" >>,
     MetricGroup = Schema,
-    Key = 'g1',
+    Key = << "g1" >>,
     Window = 60,
 
     ok = savanna_commons:create_schema(
@@ -305,9 +305,9 @@ inspect_gauge(Schema, Key, _, EndTime) ->
 
 %% TEST metric histogram - (slide)
 histogram_2() ->
-    Schema = 'test_histogram_1',
+    Schema = << "test_histogram_1" >>,
     MetricGroup = Schema,
-    Key = 'h1',
+    Key = << "h1" >>,
     Window = 10,
 
     ok = savanna_commons:create_schema(
@@ -329,9 +329,9 @@ histogram_2() ->
 
 %% TEST metric histogram - (uniform)
 histogram_3() ->
-    Schema = 'test_histogram_2',
+    Schema = << "test_histogram_2" >>,
     MetricGroup = Schema,
-    Key = 'h1',
+    Key = << "h1" >>,
     SampleSize = 3000,
     Window = 10,
 
@@ -353,9 +353,9 @@ histogram_3() ->
 
 %% TEST metric histogram - (exdec)
 histogram_4() ->
-    Schema = 'test_histogram_3',
+    Schema = << "test_histogram_3" >>,
     MetricGroup = Schema,
-    Key = 'h1',
+    Key = << "h1" >>,
     SampleSize = 3000,
     Window = 10,
 

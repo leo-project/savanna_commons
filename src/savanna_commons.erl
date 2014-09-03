@@ -80,11 +80,13 @@ new_1(Error) ->
 -spec(create_schema(sv_schema(), [#?SV_COLUMN{}]) ->
              ok | {error, any()}).
 create_schema(SchemaName, Columns) ->
+    SchemaName_1 = leo_misc:any_to_binary(SchemaName),
     CreatedAt = leo_date:now(),
-    case svc_tbl_schema:update(#?SV_SCHEMA{name = SchemaName,
+
+    case svc_tbl_schema:update(#?SV_SCHEMA{name = SchemaName_1,
                                            created_at = CreatedAt}) of
         ok ->
-            create_schema_1(SchemaName, Columns, CreatedAt);
+            create_schema_1(SchemaName_1, Columns, CreatedAt);
         {error, Cause} ->
             {error, Cause}
     end.
@@ -95,7 +97,9 @@ create_schema(SchemaName, Columns) ->
 create_schema_1(_,[],_) ->
     ok;
 create_schema_1(SchemaName, [#?SV_COLUMN{} = Col|Rest], CreatedAt) ->
-    case svc_tbl_column:update(Col#?SV_COLUMN{schema_name = SchemaName,
+    SchemaName_1 = leo_misc:any_to_binary(SchemaName),
+
+    case svc_tbl_column:update(Col#?SV_COLUMN{schema_name = SchemaName_1,
                                               created_at  = CreatedAt}) of
         ok ->
             create_schema_1(SchemaName, Rest, CreatedAt);
@@ -123,19 +127,22 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, CallbackMod) ->
                                integer(), integer(), atom()) ->
              ok | not_found | {error, any()}).
 create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, CallbackMod) ->
-    case svc_tbl_schema:get(SchemaName) of
+    SchemaName_1      = leo_misc:any_to_binary(SchemaName),
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
+
+    case svc_tbl_schema:get(SchemaName_1) of
         {ok,_} ->
-            case svc_tbl_column:find_by_schema_name(SchemaName) of
+            case svc_tbl_column:find_by_schema_name(SchemaName_1) of
                 {ok, Columns} ->
                     case svc_tbl_metric_group:update(
-                           #sv_metric_group{schema_name = SchemaName,
-                                            name     = MetricGroupName,
+                           #sv_metric_group{schema_name = SchemaName_1,
+                                            name     = MetricGroupName_1,
                                             window   = Window,
                                             step     = Step,
                                             callback = CallbackMod}) of
                         ok ->
                             create_metrics_by_schema_1(
-                              MetricGroupName, Columns, Window, Step, CallbackMod);
+                              MetricGroupName_1, Columns, Window, Step, CallbackMod);
                         Error ->
                             Error
                     end;
@@ -153,64 +160,69 @@ create_metrics_by_schema_1(_,[],_,_,_) ->
     ok;
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_COUNTER,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
     ok = new(#sv_metric_conf{metric_type = ?METRIC_COUNTER,
-                             metric_group_name = MetricGroupName,
+                             metric_group_name = MetricGroupName_1,
                              name = Key,
                              window = Window,
                              callback = CallbackMod}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+    create_metrics_by_schema_1(MetricGroupName_1, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_GAUGE,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
     ok = new(#sv_metric_conf{metric_type = ?METRIC_GAUGE,
-                             metric_group_name = MetricGroupName,
+                             metric_group_name = MetricGroupName_1,
                              name = Key,
                              window = Window,
                              callback = CallbackMod}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+    create_metrics_by_schema_1(MetricGroupName_1, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_UNIFORM,
                                                          constraint  = Constraint,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
     HType = ?HISTOGRAM_UNIFORM,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
 
     ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                              histogram_type = HType,
-                             metric_group_name = MetricGroupName,
+                             metric_group_name = MetricGroupName_1,
                              name = Key,
                              window = Window,
                              sample_size = SampleSize,
                              callback = CallbackMod}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+    create_metrics_by_schema_1(MetricGroupName_1, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_SLIDE,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
     HType = ?HISTOGRAM_SLIDE,
     ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                              histogram_type = HType,
-                             metric_group_name = MetricGroupName,
+                             metric_group_name = MetricGroupName_1,
                              name = Key,
                              window = Window,
                              callback = CallbackMod}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+    create_metrics_by_schema_1(MetricGroupName_1, Rest, Window, Step, CallbackMod);
 
 create_metrics_by_schema_1(MetricGroupName, [#?SV_COLUMN{type = ?COL_TYPE_H_EXDEC,
                                                          constraint  = Constraint,
                                                          name = Key}|Rest], Window, Step, CallbackMod) ->
+    MetricGroupName_1 = leo_misc:any_to_binary(MetricGroupName),
     HType = ?HISTOGRAM_EXDEC,
     SampleSize = leo_misc:get_value(?HISTOGRAM_CONS_SAMPLE, Constraint, ?DEFAULT_SIZE),
     AlphaValue = leo_misc:get_value(?HISTOGRAM_CONS_ALPHA,  Constraint, ?DEFAULT_ALPHA),
 
     ok = new(#sv_metric_conf{metric_type = ?METRIC_HISTOGRAM,
                              histogram_type = HType,
-                             metric_group_name = MetricGroupName,
+                             metric_group_name = MetricGroupName_1,
                              name = Key,
                              window = Window,
                              sample_size = SampleSize,
                              alpha = AlphaValue,
                              callback = CallbackMod}),
-    create_metrics_by_schema_1(MetricGroupName, Rest, Window, Step, CallbackMod);
+    create_metrics_by_schema_1(MetricGroupName_1, Rest, Window, Step, CallbackMod);
 create_metrics_by_schema_1(_,_,_,_,_) ->
     {error, invalid_args}.
 

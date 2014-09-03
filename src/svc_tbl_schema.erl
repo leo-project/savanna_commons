@@ -52,7 +52,7 @@ create_table(Mode, Nodes) ->
        {record_name, ?SV_SCHEMA},
        {attributes, record_info(fields, ?SV_SCHEMA)},
        {user_properties,
-        [{name,        atom,        primary},
+        [{name,        binary,      primary},
          {name_string, string,      false  },
          {created_at,  pos_integer, false  }
         ]}
@@ -271,5 +271,5 @@ transform_1(#?SV_SCHEMA{} = Schema) ->
 transform_1(#sv_schema{name = Name,
                        created_at = CreatedAt}) ->
     #?SV_SCHEMA{name = Name,
-                name_string = atom_to_list(Name),
+                name_string = binary_to_list(Name),
                 created_at = CreatedAt}.

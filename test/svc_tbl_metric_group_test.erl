@@ -38,22 +38,22 @@ suite_test_() ->
      ]}.
 
 suite() ->
-    SchemaName = 'test',
-    MetricGrp_1 = #sv_metric_group{id = {SchemaName, 'metic_group_1'},
+    SchemaName = << "test" >>,
+    MetricGrp_1 = #sv_metric_group{id = {SchemaName, << "metic_group_1" >>},
                                    schema_name = SchemaName,
-                                   name = 'metic_group_1',
+                                   name = << "metic_group_1" >>,
                                    window = 5000,
                                    callback = 'svc_nofify_sample',
                                    created_at = leo_date:now()},
-    MetricGrp_2 = #sv_metric_group{id = {SchemaName, 'metic_group_2'},
+    MetricGrp_2 = #sv_metric_group{id = {SchemaName, << "metic_group_2" >>},
                                    schema_name = SchemaName,
-                                   name = 'metic_group_2',
+                                   name = << "metic_group_2" >>,
                                    window = 5000,
                                    callback = 'svc_nofify_sample',
                                    created_at = leo_date:now()},
-    MetricGrp_3 = #sv_metric_group{id = {SchemaName, 'metic_group_3'},
+    MetricGrp_3 = #sv_metric_group{id = {SchemaName, << "metic_group_3" >>},
                                    schema_name = SchemaName,
-                                   name = 'metic_group_3',
+                                   name = << "metic_group_3" >>,
                                    window = 5000,
                                    callback = 'svc_nofify_sample',
                                    created_at = leo_date:now()},
@@ -71,7 +71,7 @@ suite() ->
     {ok, Ret_2} = svc_tbl_metric_group:get(MetricGrp_2#sv_metric_group.name),
     {ok, Ret_3} = svc_tbl_metric_group:get(MetricGrp_3#sv_metric_group.name),
 
-    not_found = svc_tbl_metric_group:get('metric_group_4'),
+    not_found = svc_tbl_metric_group:get(<< "metric_group_4" >>),
     Checksum_1 = svc_tbl_metric_group:checksum(SchemaName),
     Size_1 = svc_tbl_metric_group:size(),
 
