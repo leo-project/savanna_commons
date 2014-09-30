@@ -154,7 +154,7 @@ create_metrics_by_schema(SchemaName, MetricGroupName, Window, Step, CallbackMod)
     end.
 
 %% @private
--spec(create_metrics_by_schema_1(atom(),[#?SV_COLUMN{}], integer(), integer(), atom()) ->
+-spec(create_metrics_by_schema_1(binary(),[#?SV_COLUMN{}], integer(), integer(), atom()) ->
              ok | {error, any()}).
 create_metrics_by_schema_1(_,[],_,_,_) ->
     ok;
@@ -253,7 +253,7 @@ notify(MetricGroup, {Key, Event}, Times) ->
 
 %% @doc Retrieve a metric value
 %%
--spec(get_metric_value(sv_metric_grp(), atom()) ->
+-spec(get_metric_value(sv_metric_grp(), binary()) ->
              {ok, any()} | {error, any()}).
 get_metric_value(MetricGroup, Key) ->
     ServerId = ?sv_metric_name(MetricGroup, Key),

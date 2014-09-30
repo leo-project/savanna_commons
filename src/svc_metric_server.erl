@@ -139,28 +139,28 @@ get_status(ServerId) ->
 
 
 %% @doc Retrieve a metric
--spec(get_values(sv_metric()) ->
+-spec(get_values(atom()) ->
              ok | {error, any()}).
 get_values(ServerId) ->
     gen_server:call(ServerId, get_values, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve histogram-statistics
--spec(get_histogram_statistics(sv_metric()) ->
+-spec(get_histogram_statistics(atom()) ->
              ok | {error, any()}).
 get_histogram_statistics(ServerId) ->
     gen_server:call(ServerId, get_histogram_statistics, ?DEF_TIMEOUT).
 
 
 %% @doc Put a value
--spec(update(sv_metric(), any()) ->
+-spec(update(atom(), any()) ->
              ok | {error, any()}).
 update(ServerId, Value) ->
     gen_server:call(ServerId, {update, Value}, ?DEF_TIMEOUT).
 
 
 %% @doc Resize the metric
--spec(resize(sv_metric(), pos_integer()) ->
+-spec(resize(atom(), pos_integer()) ->
              ok | {error, any()}).
 resize(ServerId, NewSize) ->
     gen_server:cast(ServerId, {resize, NewSize}).
