@@ -59,7 +59,7 @@ suite() ->
                                    created_at = leo_date:now()},
 
 
-    {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
+    ok = svc_tbl_metric_group:create_table(ram_copies, [node()]),
     not_found = svc_tbl_metric_group:all(),
     not_found = svc_tbl_metric_group:get(MetricGrp_1#sv_metric_group.name),
 

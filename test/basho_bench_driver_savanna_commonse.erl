@@ -45,9 +45,9 @@ new(1) ->
     folsom:start(),
     mnesia:start(),
     {ok,_Pid} = savanna_commons_sup:start_link(),
-    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
-    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
-    {atomic,ok} = svc_tbl_metric_group:create_table(ram_copies, [node()]),
+    ok = svc_tbl_schema:create_table(ram_copies, [node()]),
+    ok = svc_tbl_column:create_table(ram_copies, [node()]),
+    ok = svc_tbl_metric_group:create_table(ram_copies, [node()]),
 
     %% create metrics
     ok = savanna_commons:create_schema(

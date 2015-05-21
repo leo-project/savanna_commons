@@ -58,7 +58,7 @@ suite_test_() ->
 sync() ->
     mnesia:start(),
 
-    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    ok = svc_tbl_schema:create_table(ram_copies, [node()]),
     Schema_1 = ?SCHEMA_1,
     Schema_2 = ?SCHEMA_2,
     Schema_3 = ?SCHEMA_3,
@@ -86,7 +86,7 @@ sync() ->
 suite() ->
     mnesia:start(),
 
-    {atomic,ok} = svc_tbl_schema:create_table(ram_copies, [node()]),
+    ok = svc_tbl_schema:create_table(ram_copies, [node()]),
     not_found = svc_tbl_schema:all(),
     not_found = svc_tbl_schema:get(?SCHEMA_1),
     not_found = svc_tbl_schema:get(?SCHEMA_2),

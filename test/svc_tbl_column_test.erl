@@ -68,21 +68,21 @@ transform() ->
                        constraint = [],
                        created_at = leo_date:now()},
 
-    {atomic,ok} = mnesia:create_table(
-                    ?TBL_COLUMNS,
-                    [{ram_copies, [node()]},
-                     {type, set},
-                     {record_name, sv_column},
-                     {attributes, record_info(fields, sv_column)},
-                     {user_properties,
-                      [{id,           tuple,       primary},
-                       {schema_name,  atom,        false  },
-                       {name,         atom,        false  },
-                       {type,         atom,        false  },
-                       {constraint,   list,        false  },
-                       {created_at,   pos_integer, false  }
-                      ]}
-                    ]),
+    {atomic, ok} = mnesia:create_table(
+                     ?TBL_COLUMNS,
+                     [{ram_copies, [node()]},
+                      {type, set},
+                      {record_name, sv_column},
+                      {attributes, record_info(fields, sv_column)},
+                      {user_properties,
+                       [{id,           tuple,       primary},
+                        {schema_name,  atom,        false  },
+                        {name,         atom,        false  },
+                        {type,         atom,        false  },
+                        {constraint,   list,        false  },
+                        {created_at,   pos_integer, false  }
+                       ]}
+                     ]),
     lists:foreach(fun(Col) ->
                           F = fun()-> mnesia:write(?TBL_COLUMNS, Col, write) end,
                           leo_mnesia:write(F)
@@ -151,7 +151,7 @@ sync() ->
                         del = false
                        },
 
-    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
+    ok = svc_tbl_column:create_table(ram_copies, [node()]),
     lists:foreach(fun(Col) ->
                           F = fun()-> mnesia:write(?TBL_COLUMNS, Col, write) end,
                           leo_mnesia:write(F)
@@ -213,7 +213,7 @@ suite() ->
                         updated_at = Now,
                         created_at = Now},
 
-    {atomic,ok} = svc_tbl_column:create_table(ram_copies, [node()]),
+    ok = svc_tbl_column:create_table(ram_copies, [node()]),
     not_found = svc_tbl_column:all(),
     not_found = svc_tbl_column:get(Col_1#?SV_COLUMN.schema_name,
                                    Col_1#?SV_COLUMN.name),
