@@ -2,7 +2,7 @@
 %%
 %% LeoProject - SavannaDB
 %%
-%% Copyright (c) 2014 Rakuten, Inc.
+%% Copyright (c) 2014-2015 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -44,22 +44,30 @@
 %% @doc Create a table of system-configutation
 %%
 create_table(Mode, Nodes) ->
-    mnesia:create_table(
-      ?TBL_NAME,
-      [{Mode, Nodes},
-       {type, set},
-       {record_name, sv_metric_group},
-       {attributes, record_info(fields, sv_metric_group)},
-       {user_properties,
-        [
-         {id,           tuple,    primary},
-         {schema_name,  binary,   false  },
-         {name,         binary,   false  },
-         {window,       integer,  false  },
-         {callback,     atom,     false  },
-         {created_at,   integer,  false  }
-        ]}
-      ]).
+    case mnesia:create_table(
+           ?TBL_NAME,
+           [{Mode, Nodes},
+            {type, set},
+            {record_name, sv_metric_group},
+            {attributes, record_info(fields, sv_metric_group)},
+            {user_properties,
+             [
+              {id,           tuple,    primary},
+              {schema_name,  binary,   false  },
+              {name,         binary,   false  },
+              {window,       integer,  false  },
+              {callback,     atom,     false  },
+              {created_at,   integer,  false  }
+             ]}
+           ]) of
+        {atomic, ok} ->
+            ok;
+        {aborted,{already_exists,_}} ->
+            ok;
+        {aborted,Error} ->
+            {error, Error}
+    end.
+
 
 %% @doc Retrieve all records
 %%
