@@ -278,6 +278,13 @@ transform_1(#?SV_SCHEMA{} = Schema) ->
     Schema;
 transform_1(#sv_schema{name = Name,
                        created_at = CreatedAt}) ->
+    NameStr = case is_atom(Name) of
+                  true ->
+                      atom_to_list(Name);
+                  _ when is_binary(Name) ->
+                      binary_to_list(Name)
+              end,
+
     #?SV_SCHEMA{name = Name,
-                name_string = binary_to_list(Name),
+                name_string = NameStr,
                 created_at = CreatedAt}.

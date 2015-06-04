@@ -23,7 +23,7 @@
 {application, savanna_commons,
  [
   {description, "Savanna's common library"},
-  {vsn, "0.8.10"},
+  {vsn, "0.8.11"},
   {modules, [
              savanna_commons
             ]},
