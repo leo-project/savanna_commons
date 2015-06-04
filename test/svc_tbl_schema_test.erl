@@ -47,6 +47,9 @@ suite_test_() ->
              ok
      end,
      [
+      {"test transformer",
+       {timeout, 30, fun transform/0}
+      },
       {"test sync table",
        {timeout, 30, fun sync/0}
       },
@@ -54,6 +57,64 @@ suite_test_() ->
        {timeout, 30, fun suite/0}
       }
      ]}.
+
+transform() ->
+    mnesia:start(),
+
+    %% -record(sv_schema, {
+    %%           name           :: sv_schema(),
+    %%           created_at = 0 :: integer()
+    %%          }).
+    %% -record(sv_schema_1, {
+    %%           name             :: sv_schema(),
+    %%           name_string = [] :: string(),
+    %%           created_at = 0   :: integer()
+    %%          }).
+
+    Schema_1 = #sv_schema{name = <<"S1">>,
+                          created_at = leo_date:now()},
+    Schema_2 = #sv_schema{name = <<"S2">>,
+                          created_at = leo_date:now()},
+    Schema_3 = #sv_schema{name = <<"S3">>,
+                          created_at = leo_date:now()},
+
+    ok = case mnesia:create_table(
+                ?TBL_SCHEMAS,
+                [{ram_copies, [node()]},
+                 {type, set},
+                 {record_name, sv_schema},
+                 {attributes, record_info(fields, sv_schema)},
+                 {user_properties,
+                  [{name,        binary,      primary},
+                   {created_at,  pos_integer, false  }
+                  ]}
+                ]) of
+             {atomic, ok} ->
+                 ok;
+             {aborted,{already_exists,_}} ->
+                 ok;
+             {aborted,Error} ->
+                 {error, Error}
+         end,
+
+    lists:foreach(fun(S) ->
+                          F = fun()-> mnesia:write(?TBL_SCHEMAS, S, write) end,
+                          ok = leo_mnesia:write(F),
+                          ok
+                  end, [Schema_1,
+                        Schema_2,
+                        Schema_3]),
+
+    ok = svc_tbl_schema:transform(),
+    {ok, Ret} = svc_tbl_schema:all(),
+    lists:foreach(fun(#?SV_SCHEMA{}) ->
+                          ok;
+                     (_) ->
+                          throw('bad_record')
+                  end, Ret),
+
+    mnesia:stop(),
+    ok.
 
 sync() ->
     mnesia:start(),
