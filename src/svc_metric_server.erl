@@ -190,9 +190,9 @@ init([State]) ->
 
 
 %% GET status
-handle_call(get_status, _From, #sv_metric_state{id        = Id,
-                                                type      = Type,
-                                                window    = Window,
+handle_call(get_status, _From, #sv_metric_state{id = Id,
+                                                type = Type,
+                                                window = Window,
                                                 notify_to = Callback} = State) ->
     Ret = [{'id', Id}, {'type', Type}, {'window', Window},
            {'notify_to', Callback}],
