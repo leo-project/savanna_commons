@@ -140,6 +140,15 @@
                 ?SV_EXPIRATION_TIME
         end).
 
+%% @doc Sup restart type
+-define(restart_type_of_child(_Exp),
+        case _Exp of
+            'infinity' ->
+                permanent;
+            _ ->
+                temporary
+        end).
+
 
 %% Records
 -record(sv_metric_state, {id :: atom(),
