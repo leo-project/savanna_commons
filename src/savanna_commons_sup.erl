@@ -51,14 +51,15 @@ start_link() ->
 -spec(start_child(mod_sv_metrics(), atom(), #sv_metric_conf{}) ->
              ok | {error, any()}).
 start_child(?MOD_METRICS_COUNTER = Mod, ServerId, MetricConf) ->
-    #sv_metric_conf{window   = Window,
-                    step     = Step,
+    #sv_metric_conf{window = Window,
+                    step = Step,
                     callback = Callback} = MetricConf,
     ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_COUNTER,
                                                   Window, Callback, Step, ProcExpirationTime]},
-                 temporary, 2000, worker, [svc_metric_server]},
+                 ?restart_type_of_child(ProcExpirationTime),
+                 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
         {ok,_Pid} ->
@@ -68,14 +69,15 @@ start_child(?MOD_METRICS_COUNTER = Mod, ServerId, MetricConf) ->
     end;
 
 start_child(?MOD_METRICS_GAUGE = Mod, ServerId, MetricConf) ->
-    #sv_metric_conf{window   = Window,
-                    step     = Step,
+    #sv_metric_conf{window = Window,
+                    step = Step,
                     callback = Callback} = MetricConf,
     ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, ?METRIC_GAUGE,
                                                   Window, Callback, Step, ProcExpirationTime]},
-                 temporary, 2000, worker, [svc_metric_server]},
+                 ?restart_type_of_child(ProcExpirationTime),
+                 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
         {ok,_Pid} ->
@@ -86,16 +88,17 @@ start_child(?MOD_METRICS_GAUGE = Mod, ServerId, MetricConf) ->
 
 start_child(?MOD_METRICS_HISTOGRAM = Mod, ServerId, MetricConf) ->
     #sv_metric_conf{histogram_type = HistogramType,
-                    window      = Window,
-                    step        = Step,
+                    window = Window,
+                    step = Step,
                     sample_size = SampleSize,
-                    alpha       = Alpha,
-                    callback    = Callback} = MetricConf,
+                    alpha = Alpha,
+                    callback = Callback} = MetricConf,
     ProcExpirationTime = ?env_proc_expiration_time(),
     ChildSpec = {ServerId,
                  {svc_metric_server, start_link, [ServerId, Mod, HistogramType,
                                                   Window, SampleSize, Alpha, Callback, Step, ProcExpirationTime]},
-                 temporary, 2000, worker, [svc_metric_server]},
+                 ?restart_type_of_child(ProcExpirationTime),
+                 2000, worker, [svc_metric_server]},
 
     case supervisor:start_child(?MODULE, ChildSpec) of
         {ok,_Pid} ->
