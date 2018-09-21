@@ -3,7 +3,7 @@
 %%
 %% LeoProject - Savanna Commons
 %%
-%% Copyright (c) 2014-2017 Rakuten, Inc.
+%% Copyright (c) 2014-2018 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -23,7 +23,7 @@
 {application, savanna_commons,
  [
   {description, "Savanna's common library"},
-  {vsn, "0.10.11"},
+  {vsn, "0.10.12"},
   {modules, [
              savanna_commons
             ]},
