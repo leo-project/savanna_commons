@@ -1,5 +1,7 @@
 # **savanna_commons**
 
+[![Build Status](https://travis-ci.org/leo-project/savanna_commons.svg?branch=develop)](http://travis-ci.org/leo-project/savanna_commons)
+
 An original statistics library, which is able to easily realize to calculate statistics such as counter and histogram.
 
 ## Usage
