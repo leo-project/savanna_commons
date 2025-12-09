@@ -157,14 +157,16 @@ suite() ->
     Checksum_1 = svc_tbl_schema:checksum(),
     2 = svc_tbl_schema:size(),
 
-    {ok, _S1} = svc_tbl_schema:get(?SCHEMA_NAME_1),
-    {ok, _S2} = svc_tbl_schema:get(?SCHEMA_NAME_2),
+    {ok, S1} = svc_tbl_schema:get(?SCHEMA_NAME_1),
+    {ok, S2} = svc_tbl_schema:get(?SCHEMA_NAME_2),
 
-    ?assertEqual(?SCHEMA_1, _S1),
-    ?assertEqual(?SCHEMA_2, _S2),
+    ?assertEqual(?SCHEMA_1, S1),
+    ?assertEqual(?SCHEMA_2, S2),
 
-    {ok, _S1} = svc_tbl_schema:find_by_name_string(binary_to_list(?SCHEMA_NAME_1)),
-    {ok, _S2} = svc_tbl_schema:find_by_name_string(binary_to_list(?SCHEMA_NAME_2)),
+    {ok, S1_2} = svc_tbl_schema:find_by_name_string(binary_to_list(?SCHEMA_NAME_1)),
+    {ok, S2_2} = svc_tbl_schema:find_by_name_string(binary_to_list(?SCHEMA_NAME_2)),
+    ?assertEqual(S1, S1_2),
+    ?assertEqual(S2, S2_2),
 
     ok = svc_tbl_schema:delete(?SCHEMA_NAME_1),
     not_found = svc_tbl_schema:get(?SCHEMA_NAME_1),
