@@ -356,7 +356,7 @@ judge_trim_and_notify(#sv_metric_state{id = ServerId,
             Diff = Now - UpdatedAt,
             case (Diff >= ExpireTime) of
                 true ->
-                    Delay = erlang:phash(Now, 500),
+                    Delay = erlang:phash2(Now, 500),
                     timer:apply_after(Delay, savanna_commons_sup,
                                       stop_child, [[ServerId]]),
                     State;
@@ -375,7 +375,7 @@ trim_and_notify_1(#sv_metric_state{sample_mod = Mod,
 
     case (Diff >= Window) of
         true ->
-            Delay = erlang:phash(Now, 500),
+            Delay = erlang:phash2(Now, 500),
             spawn(fun() ->
                           timer:sleep(erlang:phash2(leo_date:clock(), Delay)),
                           ToDateTime   = TrimedAt + Window,

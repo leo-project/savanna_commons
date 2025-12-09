@@ -9,3 +9,4 @@ ebin/
 savanna_commons.dot
 savanna_commons.png
 .rebar
+_build/

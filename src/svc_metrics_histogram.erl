@@ -110,7 +110,7 @@ trim_1(?HISTOGRAM_UNIFORM, ServerId) ->
     true = ets:insert(?HISTOGRAM_TABLE,
                       {ServerId,
                        Hist#histogram{sample = Sample#uniform{n = 1,
-                                                              seed = os:timestamp()}}}),
+                                                              seed = rand:seed(exsss)}}}),
     ets:delete_all_objects(Sample#uniform.reservoir),
     ok;
 trim_1(?HISTOGRAM_EXDEC, ServerId) ->
@@ -120,7 +120,7 @@ trim_1(?HISTOGRAM_EXDEC, ServerId) ->
                       {ServerId,
                        Hist#histogram{sample = Sample#exdec{start = 0,
                                                             next = 0,
-                                                            seed = os:timestamp(),
+                                                            seed = rand:seed(exsss),
                                                             n = 1}}}),
     ets:delete_all_objects(Sample#exdec.reservoir),
     ok.

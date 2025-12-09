@@ -3,6 +3,7 @@
 ## LeoProject - SavannaDB Commons
 ##
 ## Copyright (c) 2014 Rakuten, Inc.
+## Copyright (c) 2019-2025 Lions Data, Ltd.
 ##
 ## This file is provided to you under the Apache License,
 ## Version 2.0 (the "License"); you may not use this file
@@ -19,43 +20,51 @@
 ## under the License.
 ##
 ## ======================================================================
-.PHONY: deps test
+.PHONY: all compile xref eunit ct check_plt build_plt dialyzer doc clean distclean
 
-REBAR := ./rebar
-APPS = erts kernel stdlib sasl crypto compiler inets mnesia public_key runtime_tools snmp syntax_tools tools xmerl webtool
+REBAR := rebar3
+APPS = erts kernel stdlib sasl crypto compiler inets mnesia public_key runtime_tools snmp syntax_tools tools xmerl
 PLT_FILE = .savanna_commons_dialyzer_plt
 DOT_FILE = savanna_commons.dot
 CALL_GRAPH_FILE = savanna_commons.png
 
-all:
-	@$(REBAR) update-deps
-	@$(REBAR) get-deps
-	@$(REBAR) compile
-	@$(REBAR) xref skip_deps=true
-	@$(REBAR) eunit skip_deps=true
+all: compile xref eunit
+
 compile:
-	@$(REBAR) compile skip_deps=true
+	@$(REBAR) compile
+
 xref:
-	@$(REBAR) xref skip_deps=true
+	@$(REBAR) xref
+
 eunit:
-	@$(REBAR) eunit skip_deps=true
+	@$(REBAR) eunit
+
+ct:
+	@$(REBAR) ct
+
 check_plt:
 	@$(REBAR) compile
 	dialyzer --check_plt --plt $(PLT_FILE) --apps $(APPS)
+
 build_plt:
 	@$(REBAR) compile
-	dialyzer --build_plt --output_plt $(PLT_FILE) --apps $(APPS) deps/*/ebin
+	dialyzer --build_plt --output_plt $(PLT_FILE) --apps $(APPS) _build/default/lib/*/ebin
+
 dialyzer:
-	@$(REBAR) compile
-	dialyzer --plt $(PLT_FILE) -r ebin/ --dump_callgraph $(DOT_FILE) -Wrace_conditions
-doc: compile
-	@$(REBAR) doc
+	@$(REBAR) dialyzer
+
+doc:
+	@$(REBAR) edoc
+
 callgraph: graphviz
 	dot -Tpng -o$(CALL_GRAPH_FILE) $(DOT_FILE)
+
 graphviz:
 	$(if $(shell which dot),,$(error "To make the depgraph, you need graphviz installed"))
+
 clean:
-	@$(REBAR) clean skip_deps=true
-distclean:
-	@$(REBAR) delete-deps
 	@$(REBAR) clean
+
+distclean:
+	@$(REBAR) clean -a
+	@rm -rf _build
